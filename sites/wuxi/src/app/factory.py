@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
@@ -149,6 +150,8 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
         cron_task.cancel()
 
     app = FastAPI(title=cfg.key or "PySite", version="2.0", lifespan=lifespan)
+    # HTML/CSS/JS/JSON 压缩传输（nginx 只压它自己认得的类型，代理响应需要应用层兜底）
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=6)
     app.state.cfg = cfg
     app.state.db = db
     app.state.cache = cache
@@ -247,7 +250,8 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
             if done is not None:
                 cached, media = done
                 return _file(request, cached, "public, max-age=2592000", media)
-        return _file(request, target, "public, max-age=0, must-revalidate")
+        # 上传文件名为 uuid 随机生成、内容不变，可安全长缓存（重复访问不再回源验证）
+        return _file(request, target, "public, max-age=2592000")
 
     @app.get("/theme-assets/{path:path}", include_in_schema=False)
     async def theme_assets(request: Request, path: str):

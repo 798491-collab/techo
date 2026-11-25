@@ -638,6 +638,19 @@ class Database:
             connect_args={"check_same_thread": False},
             echo=echo,
         )
+
+        # WAL 模式 + 常用 PRAGMA：读写并发不互相阻塞，前台访问不被后台写入卡住
+        from sqlalchemy import event as _sa_event
+
+        @_sa_event.listens_for(self.engine, "connect")
+        def _sqlite_pragma(dbapi_conn, _record):  # noqa: ANN001
+            cur = dbapi_conn.cursor()
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA synchronous=NORMAL")
+            cur.execute("PRAGMA busy_timeout=5000")
+            cur.execute("PRAGMA cache_size=-8000")
+            cur.close()
+
         self.SessionLocal = sessionmaker(bind=self.engine, autoflush=False, expire_on_commit=False)
 
     def init_schema(self) -> None:
