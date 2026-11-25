@@ -31,26 +31,28 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
 
 `k8s/provision-secrets.sh`（幂等，部署脚本每次部署都会自动调用）：
 
-- Dashboard Token：缺失时随机生成 → `k8s/secrets/dashboard-token.txt`（有效期 1 年）
 - WebHook Token：缺失时随机生成 → `k8s/secrets/webhook-token.txt`，并自动写入 webhook-receiver
-- KubePi 集群导入 Token：首次部署时手动生成 → `k8s/secrets/kubepi-cluster-token.txt`
-  （`kubectl -n kube-system create token kubepi-user --duration=87600h`，有效期 10 年）
-- KubePi 管理员密码：初始 `admin / kubepi`，首次登录由系统**强制修改**，无需脚本管理
-- 统一存放在本目录 `secrets/`（.gitignore 已忽略），不写 `/root`、`/www/server` 等系统目录
-- 重新生成：删除 secrets/ 下对应文件后重跑脚本（或下次部署自动补齐）
+- KubePi 管理员密码：部署时随机生成并通过 KubePi API 改掉默认 `admin/kubepi`
+  → `k8s/secrets/kubepi-admin.txt`（若 API 改密未成功，首次登录系统强制要求改密，双保险）
+- 五站后台管理员密码：缺失时随机生成写入 `sites/<站>/.env`（与应用内首启生成规则一致，
+  账号均为 `admin`；已有密码不会被覆盖）
+- **全部凭据统一登记** → `k8s/secrets/credentials.txt`（每次部署刷新，权限 600，类似
+  MySQL 安装后的初始密码文件）
+- 凭据文件存放在本目录 `secrets/`（.gitignore 已忽略），不写 `/root`、`/www/server` 等系统目录
+- 重新生成某凭据：删除 secrets/ 下对应文件后重跑脚本（或下次部署自动补齐）
 
 ## 管理界面（KubePi，中文）
 
 - **KubePi**：现代化中文 K8s 面板（1Panel 团队出品），NodePort 30110
 - 外部访问：`http://<服务器IP>:10000/`（nginx 反代，含 WebSocket 支持）
-- 登录：初始 `admin / kubepi`，**首次登录强制设置新密码**（未改密码所有 API 返回 403）
+- 登录：账号 `admin` + 随机密码（部署时自动生成并改掉默认值，见 `k8s/secrets/credentials.txt`；
+  若改密未成功则默认 `admin/kubepi`，首次登录系统强制要求改密）
 - 首次使用需导入集群：「集群管理 → 添加集群」→ 认证方式 Token：
   - API 地址 `https://<服务器IP>:6443`；Token 用服务器 `k8s/secrets/kubepi-cluster-token.txt`
     （kubepi-user SA，cluster-admin，有效期 10 年）；跳过 TLS 校验（自签证书）
 - 数据持久化：宿主机 `/www/wwwroot/pysite/kubepi-data/`；重建：`kubectl apply -f k8s/kubepi.yaml`
-- 旧 Kubernetes Dashboard 清单保留在 `k8s/dashboard.yaml`（副本数 0 未运行；恢复：
-  `kubectl -n kubernetes-dashboard scale deploy kubernetes-dashboard --replicas=1`，
-  Token 在 `k8s/secrets/dashboard-token.txt`）
+- 集群导入 Token：`k8s/secrets/kubepi-cluster-token.txt`（kubepi-user SA，cluster-admin，有效期 10 年；
+  重新生成：`kubectl -n kube-system create token kubepi-user --duration=87600h`）
 - 接收器健康检查：`http://<服务器IP>:8300/healthz`（200 = 自动部署链路正常）
 - 全部运维入口汇总见仓库根 `README.md` 的「运维入口速查」
 

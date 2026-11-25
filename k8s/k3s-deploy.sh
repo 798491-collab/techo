@@ -21,7 +21,8 @@ fi
 cd "$REPO"
 log "===== K3s 部署开始 ====="
 
-# 0. 凭据自动配置（幂等：Dashboard Token / WebHook Token 缺失时随机生成，存 k8s/secrets/）
+# 0. 凭据自动配置（幂等：WebHook Token / KubePi 管理密码 / 五站后台密码缺失时随机生成，
+#    并统一登记到 k8s/secrets/credentials.txt）
 bash "$REPO/k8s/provision-secrets.sh" 2>&1 | while IFS= read -r l; do log "凭据: $l"; done
 
 # 1. 拉代码（storage/ 被 gitignore，git reset --hard 不会碰挂载的数据卷）
