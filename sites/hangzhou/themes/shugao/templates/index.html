@@ -52,13 +52,13 @@
       <h2 class="sg-sec-title">服务项目</h2>
     </div>
     {% set svc = product_items if product_items else [] %}
-    <div class="sg-acc">
-      {% for t in svc[:6] %}
-      <a href="{{ url_content(t) }}" class="sg-acc-item {{ 'on' if loop.first }}">
-        <span class="sg-acc-num">0{{ loop.index }}</span>
-        <span class="sg-acc-name">{{ t.title | truncate(20) }}</span>
-        <span class="sg-acc-desc">{{ t.summary | default('提供专业、高效的解决方案与服务保障，助力企业稳健发展。') | truncate(60) }}</span>
-        <i class="bi bi-arrow-up-right"></i>
+    <div class="sg-svc-grid">
+      {% for t in svc[:9] %}
+      <a href="{{ url_content(t) }}" class="sg-svc-card">
+        <span class="sg-svc-num">0{{ loop.index }}</span>
+        <h3>{{ t.title | truncate(20) }}</h3>
+        <p>{{ t.summary | default('提供专业、高效的解决方案与服务保障，助力企业稳健发展。') | truncate(60) }}</p>
+        <span class="sg-svc-more">查看详情 <i class="bi bi-arrow-up-right"></i></span>
       </a>
       {% endfor %}
     </div>
@@ -77,7 +77,7 @@
       <a href="/contact.html" class="sg-btn sg-btn-line">查看更多案例 <i class="bi bi-arrow-right"></i></a>
     </div>
     <div class="sg-case-grid">
-      {% for t in case_items[:3] %}
+      {% for t in case_items[:9] %}
       <a href="{{ url_content(t) }}" class="sg-case-card">
         <div class="sg-case-cover"><img src="{{ oss(t.cover, 384, 200) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
         <div class="sg-case-body"><h3>{{ t.title | truncate(24) }}</h3><span>查看详情 <i class="bi bi-arrow-right"></i></span></div>

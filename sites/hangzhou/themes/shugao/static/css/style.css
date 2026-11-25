@@ -112,6 +112,15 @@ h1,h2,h3,h4{font-weight:600}
 .sg-acc-item .bi{color:var(--sg-gray);font-size:20px;transition:.3s}
 .sg-acc-item:hover .bi,.sg-acc-item.on .bi{color:var(--sg-main);transform:translate(4px,-4px)}
 .sg-acc-item.on .sg-acc-num,.sg-acc-item:hover .sg-acc-num{color:var(--sg-main)}
+.sg-svc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.sg-svc-card{background:#fff;border-radius:8px;padding:28px 24px;box-shadow:0 4px 16px rgba(0,0,0,.06);transition:.35s;display:flex;flex-direction:column;gap:12px}
+.sg-svc-card:hover{transform:translateY(-6px);box-shadow:var(--sg-shadow)}
+.sg-svc-num{font-size:26px;font-weight:700;color:#ddd;transition:.3s}
+.sg-svc-card:hover .sg-svc-num{color:var(--sg-main)}
+.sg-svc-card h3{font-size:19px;font-weight:600}
+.sg-svc-card p{color:var(--sg-gray);font-size:14px;flex:1}
+.sg-svc-more{color:var(--sg-main);font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.sg-svc-card:hover .bi{transform:translate(3px,-3px)}
 
 /* 服务优势 */
 .sg-plat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
@@ -272,14 +281,14 @@ h1,h2,h3,h4{font-weight:600}
   .sg-nav{display:none}
   .sg-burger{display:block}
   .sg-about-grid,.sg-inner-layout{grid-template-columns:1fr}
-  .sg-plat-grid,.sg-case-grid,.sg-list-grid,.sg-contact-cards{grid-template-columns:repeat(2,1fr)}
+  .sg-plat-grid,.sg-case-grid,.sg-list-grid,.sg-contact-cards,.sg-svc-grid{grid-template-columns:repeat(2,1fr)}
   .sg-f-grid{grid-template-columns:1fr 1fr}
   .sg-slide-txt h2{font-size:32px}
   .sg-slide-txt em{font-size:56px}
   .sg-hero{height:480px}
 }
 @media (max-width:640px){
-  .sg-plat-grid,.sg-case-grid,.sg-list-grid,.sg-contact-cards,.sg-news-grid,.sg-f-grid{grid-template-columns:1fr}
+  .sg-plat-grid,.sg-case-grid,.sg-list-grid,.sg-contact-cards,.sg-news-grid,.sg-f-grid,.sg-svc-grid{grid-template-columns:1fr}
   .sg-news-card,.sg-news-lead{grid-template-columns:1fr}
   .sg-news-cover{height:190px}
   .sg-acc-item{grid-template-columns:1fr auto;gap:6px 14px;padding:20px 16px}

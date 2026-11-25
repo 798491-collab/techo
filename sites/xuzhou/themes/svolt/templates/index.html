@@ -21,32 +21,6 @@
 </section>
 {% endblock %}
 {% block content %}
-{# ===== 服务项目（product 模型内容驱动，数量由模板截取） ===== #}
-<section class="sv-solutions" data-reveal>
-  <div class="sv-wrap">
-    <div class="sv-sec-head-row sv-light">
-      <div>
-        <p class="sv-sec-en">Our Services</p>
-        <h2 class="sv-sec-title">服务项目</h2>
-      </div>
-    </div>
-    {% set svc = product_items if product_items else [] %}
-    <div class="sv-sol-grid">
-      {% for t in svc[:4] %}
-      <a href="{{ url_content(t) }}" class="sv-sol-card sv-sol-{{ loop.index }}">
-        <div class="sv-sol-bg"></div>
-        <div class="sv-sol-body">
-          <em>0{{ loop.index }}</em>
-          <h3>{{ t.title | truncate(20) }}</h3>
-          <p>{{ t.summary | default('提供专业、可靠的一站式解决方案与服务保障。') | truncate(50) }}</p>
-          <span>了解更多 <i class="bi bi-arrow-right"></i></span>
-        </div>
-      </a>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-
 {# ===== 关于 + 数字统计（深蓝底） ===== #}
 <section class="sv-about" data-reveal>
   <div class="sv-wrap sv-about-grid">
@@ -62,6 +36,53 @@
       <p class="sv-about-desc">{{ site.name }}深耕{{ site.industry | default('建筑咨询') }}领域，凭借丰富的行业经验、专业的申报团队与完善的服务体系，为全国企业提供资质代办、升级、延期、变更等一站式咨询服务，赢得了广大客户的信赖与好评。</p>
     </div>
     {% if about_page and about_page.cover %}<div class="sv-about-img"><img src="{{ oss(about_page.cover, 522, 380) }}" alt="{{ about_page.title | default('关于我们') }}"></div>{% endif %}
+  </div>
+</section>
+
+{# ===== 服务项目（product 模型内容驱动，数量由模板截取） ===== #}
+<section class="sv-solutions" data-reveal>
+  <div class="sv-wrap">
+    <div class="sv-sec-head-row sv-light">
+      <div>
+        <p class="sv-sec-en">Our Services</p>
+        <h2 class="sv-sec-title">服务项目</h2>
+      </div>
+    </div>
+    {% set svc = product_items if product_items else [] %}
+    <div class="sv-sol-grid">
+      {% for t in svc[:8] %}
+      <a href="{{ url_content(t) }}" class="sv-sol-card sv-sol-{{ loop.index }}">
+        <div class="sv-sol-bg"></div>
+        <div class="sv-sol-body">
+          <em>0{{ loop.index }}</em>
+          <h3>{{ t.title | truncate(20) }}</h3>
+          <p>{{ t.summary | default('提供专业、可靠的一站式解决方案与服务保障。') | truncate(50) }}</p>
+          <span>了解更多 <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ===== 精选案例（9 个） ===== #}
+<section class="sv-section sv-cases-sec" data-reveal>
+  <div class="sv-wrap">
+    <div class="sv-sec-head-row">
+      <div>
+        <p class="sv-sec-en">Cases</p>
+        <h2 class="sv-sec-title">精选案例</h2>
+      </div>
+      <a href="/case.html" class="sv-more-link">更多案例 <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="sv-case-grid">
+      {% for t in case_items[:9] %}
+      <a href="{{ url_content(t) }}" class="sv-case-card">
+        <div class="sv-case-cover"><img src="{{ oss(t.cover, 384, 200) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
+        <div class="sv-case-body"><h3>{{ t.title | truncate(24) }}</h3><span>查看详情 <i class="bi bi-arrow-right"></i></span></div>
+      </a>
+      {% endfor %}
+    </div>
   </div>
 </section>
 

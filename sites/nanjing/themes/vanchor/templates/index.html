@@ -77,7 +77,7 @@
       <a href="/case.html" class="vc-more">更多案例 <i class="bi bi-arrow-right"></i></a>
     </div>
     <div class="vc-case-grid">
-      {% for t in case_items[:3] %}
+      {% for t in case_items[:9] %}
       <a href="{{ url_content(t) }}" class="vc-case-card">
         <div class="vc-case-cover"><img src="{{ oss(t.cover, 384, 200) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
         <div class="vc-case-body"><h3>{{ t.title | truncate(24) }}</h3><span>查看详情 <i class="bi bi-arrow-right"></i></span></div>

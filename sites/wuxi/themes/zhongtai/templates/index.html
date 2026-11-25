@@ -29,7 +29,7 @@
   <div class="zt-wrap">
     {% set svc = product_items if product_items else [] %}
     <div class="zt-fields-grid">
-      {% for t in svc[:4] %}
+      {% for t in svc[:8] %}
       <a href="{{ url_content(t) }}" class="zt-field">
         <em>0{{ loop.index }}</em>
         <span class="zt-field-en">{{ t.subtitle | default('SERVICE '~loop.index) | truncate(24) }}</span>
@@ -67,7 +67,7 @@
       <h2 class="zt-sec-title">精选案例</h2>
     </div>
     <div class="zt-case-grid">
-      {% for t in case_items[:6] %}
+      {% for t in case_items[:9] %}
       <a href="{{ url_content(t) }}" class="zt-case-card">
         <div class="zt-case-cover"><img src="{{ oss(t.cover, 384, 210) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
         <div class="zt-case-body"><h3>{{ t.title | truncate(24) }}</h3><span>查看详情 <i class="bi bi-arrow-right"></i></span></div>
@@ -88,7 +88,7 @@
       <h2 class="zt-sec-title">最新资讯</h2>
     </div>
     <div class="zt-news-grid">
-      {% for h in news_items[:3] %}
+      {% for h in news_items[:6] %}
       <a href="{{ url_content(h) }}" class="zt-news-card">
         <div class="zt-news-cover"><img src="{{ oss(h.cover, 386, 190) or '/theme-assets/img/ph-news'~(loop.index0 % 2 + 1)~'.svg' }}" alt="{{ h.title }}" loading="lazy"></div>
         <div class="zt-news-body">

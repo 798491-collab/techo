@@ -239,7 +239,7 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
         # oss2 让写死 200×200 的页面缓存失效，改由各主题按样式尺寸出图。
         qp = request.query_params
         use_page_cache = (not qp.get("guest_book")) and template != "search.html"
-        cache_key = "oss33:" + request.url.path + ("?" + urlencode(sorted(qp.multi_items())) if qp else "")
+        cache_key = "oss34:" + request.url.path + ("?" + urlencode(sorted(qp.multi_items())) if qp else "")
         if use_page_cache:
             cached_html = cache.get_page(cache_key)
             if cached_html is not None:

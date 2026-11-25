@@ -44,6 +44,49 @@
   </div>
 </section>
 
+{# ===== 服务项目（product 模型内容驱动，数量由模板截取） ===== #}
+<section class="jg-layout jg-section" data-reveal>
+  <div class="jg-wrap">
+    <div class="jg-sec-head">
+      <p class="jg-sec-en">Our Services</p>
+      <h2 class="jg-sec-title">服务项目</h2>
+      <div class="jg-sec-line"></div>
+    </div>
+    {% set svc = product_items if product_items else [] %}
+    <div class="jg-layout-grid">
+      {% for t in svc[:9] %}
+      <a href="{{ url_content(t) }}" class="jg-layout-card">
+        <em>0{{ loop.index }}</em>
+        <div class="jg-layout-cover"><img src="{{ oss(t.cover, 284, 200) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
+        <h3>{{ t.title | truncate(20) }}</h3>
+        <p>{{ t.summary | default('专业团队全程护航，助力企业高效拿证。') | truncate(40) }}</p>
+        <span>查看详情 <i class="bi bi-arrow-right"></i></span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ===== 精选案例（案例网格） ===== #}
+<section class="jg-cases jg-section jg-bg" data-reveal>
+  <div class="jg-wrap">
+    <div class="jg-sec-head">
+      <p class="jg-sec-en">Cases</p>
+      <h2 class="jg-sec-title">精选案例</h2>
+      <div class="jg-sec-line"></div>
+    </div>
+    <div class="jg-case-grid">
+      {% for t in case_items[:9] %}
+      <a href="{{ url_content(t) }}" class="jg-case-card">
+        <div class="jg-case-cover"><img src="{{ oss(t.cover, 386, 190) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
+        <h3>{{ t.title | truncate(24) }}</h3>
+        <span>查看详情 <i class="bi bi-arrow-right"></i></span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
 {# ===== 新闻中心（左图右列表，7 条全部展示，无筛选） ===== #}
 <section class="jg-news jg-section jg-bg" data-reveal>
   <div class="jg-wrap">
@@ -71,49 +114,6 @@
       {% endif %}
     </div>
     <div class="jg-tab-more"><a href="/news.html" class="jg-btn jg-btn-line">全部新闻 <i class="bi bi-arrow-right"></i></a></div>
-  </div>
-</section>
-
-{# ===== 服务项目（product 模型内容驱动，数量由模板截取） ===== #}
-<section class="jg-layout jg-section" data-reveal>
-  <div class="jg-wrap">
-    <div class="jg-sec-head">
-      <p class="jg-sec-en">Our Services</p>
-      <h2 class="jg-sec-title">服务项目</h2>
-      <div class="jg-sec-line"></div>
-    </div>
-    {% set svc = product_items if product_items else [] %}
-    <div class="jg-layout-grid">
-      {% for t in svc[:4] %}
-      <a href="{{ url_content(t) }}" class="jg-layout-card">
-        <em>0{{ loop.index }}</em>
-        <div class="jg-layout-cover"><img src="{{ oss(t.cover, 284, 200) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
-        <h3>{{ t.title | truncate(20) }}</h3>
-        <p>{{ t.summary | default('专业团队全程护航，助力企业高效拿证。') | truncate(40) }}</p>
-        <span>查看详情 <i class="bi bi-arrow-right"></i></span>
-      </a>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-
-{# ===== 精选案例（案例网格） ===== #}
-<section class="jg-cases jg-section jg-bg" data-reveal>
-  <div class="jg-wrap">
-    <div class="jg-sec-head">
-      <p class="jg-sec-en">Cases</p>
-      <h2 class="jg-sec-title">精选案例</h2>
-      <div class="jg-sec-line"></div>
-    </div>
-    <div class="jg-case-grid">
-      {% for t in case_items[:3] %}
-      <a href="{{ url_content(t) }}" class="jg-case-card">
-        <div class="jg-case-cover"><img src="{{ oss(t.cover, 386, 190) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
-        <h3>{{ t.title | truncate(24) }}</h3>
-        <span>查看详情 <i class="bi bi-arrow-right"></i></span>
-      </a>
-      {% endfor %}
-    </div>
   </div>
 </section>
 {% endblock %}
