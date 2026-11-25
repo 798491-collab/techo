@@ -51,7 +51,7 @@ SUBJ=$(git log -1 --format='%s' "$NEW" | sed 's/["\\]/ /g')
 AUTHOR=$(git log -1 --format='%an' "$NEW" | sed 's/["\\]/ /g')
 for s in $SITES; do
   kubectl -n "$NS" patch "deployment/pysite-$s" --type=strategic -p \
-    "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"pysite/commit\":\"$NEW\",\"pysite/commit-subject\":\"$SUBJ\",\"pysite/deployed-at\":\"$(date '+%F %T')\"}}}}}" >/dev/null
+    "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kubernetes.io/change-cause\":\"发版 $NEW: $SUBJ\",\"pysite/commit\":\"$NEW\",\"pysite/commit-subject\":\"$SUBJ\",\"pysite/deployed-at\":\"$(date '+%F %T')\"}}}}}" >/dev/null
 done
 log "已发版 $NEW「$SUBJ」($AUTHOR)，五站滚动更新中"
 
