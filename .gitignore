@@ -76,3 +76,6 @@ static_html/
 
 # 更早的旧目录
 sites/*/var/
+
+# K3s 凭据（自动生成，不入库）
+k8s/secrets/

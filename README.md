@@ -6,13 +6,15 @@
 
 ## 站点与端口
 
-| 站点 | 公司 | 端口 | 域名 | 前台 | 后台 | 主题风格 |
-| --- | --- | --- | --- | --- | --- | --- |
-| nanjing | 南京筑韬建筑工程有限公司 | 8101 | nanjingzhutao.com | http://127.0.0.1:8101/ | /admin/ | 深蓝商务 · 大图 Banner |
-| hefei | 合肥筑骋建筑工程咨询有限公司 | 8102 | hefeizhupin.com | http://127.0.0.1:8102/ | /admin/ | 橙色活力 · 卡片式 |
-| xuzhou | 徐州玖硕建筑工程咨询有限公司 | 8103 | xuzhoujiushuo.com | http://127.0.0.1:8103/ | /admin/ | 红色稳重 · 政务风 |
-| wuxi | 无锡君鑫建筑工程咨询有限公司 | 8104 | wuxijunxin.com | http://127.0.0.1:8104/ | /admin/ | 墨绿高端 · 杂志排版 |
-| hangzhou | 杭州志俞建筑工程咨询有限公司 | 8105 | hangzhouzhiyu.net | http://127.0.0.1:8105/ | /admin/ | 黑白极简 · 科技几何 |
+| 站点 | 公司 | 端口 | 前台 | 后台 | 主题风格 |
+| --- | --- | --- | --- | --- | --- |
+| nanjing | 南京筑韬建筑工程有限公司 | 8101 | http://127.0.0.1:8101/ | /admin/ | 深蓝商务 · 大图 Banner |
+| hefei | 合肥筑骋建筑工程咨询有限公司 | 8102 | http://127.0.0.1:8102/ | /admin/ | 橙色活力 · 卡片式 |
+| xuzhou | 徐州玖硕建筑工程咨询有限公司 | 8103 | http://127.0.0.1:8103/ | /admin/ | 红色稳重 · 政务风 |
+| wuxi | 无锡君鑫建筑工程咨询有限公司 | 8104 | http://127.0.0.1:8104/ | /admin/ | 墨绿高端 · 杂志排版 |
+| hangzhou | 杭州志俞建筑工程咨询有限公司 | 8105 | http://127.0.0.1:8105/ | /admin/ | 黑白极简 · 科技几何 |
+
+> 各站域名属敏感信息，不入库；以服务器 nginx 反代配置（`scripts/nginx/` 仅本地保留）与各站 `site.json` 为准。
 
 > 每个站点目录内有独立的详细说明 `README.md`（单站启动 / 独立部署 / 目录结构 / 运维）。
 
@@ -56,15 +58,16 @@
 
 | 入口 | 地址 | 认证 | 说明 |
 | --- | --- | --- | --- |
-| **K3s Dashboard**（容器管理界面） | `http://<服务器IP>:10000/` | 两层：① Basic Auth `k8sadmin`（密码同 SSH）；② Dashboard Token（服务器 `/root/dashboard-token.txt`，有效期 1 年） | 可视化管理 Pod / Deployment / 日志 / 重启 / 回滚；nginx 反代 + Basic Auth 双重保护 |
-| **Webhook 接收器健康检查** | `http://<服务器IP>:8300/healthz` | 无（token 校验只在 `/hook` 触发时） | 返回 200 = 自动部署链路正常 |
+| **K3s Dashboard**（容器管理界面） | `http://<服务器IP>:10000/` | 仅 Dashboard 自带登录界面：粘贴 Token（服务器 `k8s/secrets/dashboard-token.txt`，有效期 1 年） | 可视化管理 Pod / Deployment / 日志 / 重启 / 回滚；无 Basic Auth，凭据缺失时由 `k8s/provision-secrets.sh` 自动随机生成 |
+| **Webhook 接收器健康检查** | `http://<服务器IP>:8300/healthz` | 无（token 校验只在 `/hook` 触发时） | 返回 200 = 自动部署链路正常；WebHook Token 同样由 provision 脚本自动生成（`k8s/secrets/webhook-token.txt`） |
 | **SSH 运维（kubectl）** | `ssh root@<服务器IP>` | SSH 凭据 | 登录后 `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml` 再执行 kubectl 命令 |
 | K3s API Server | `https://<服务器IP>:6443` | kubeconfig 客户端证书 | 仅本机/内网管理用，不对公网开放 |
 | 五站前台 | `http://<各站域名>/` | — | 必须用域名访问，IP 会落到 nginx 默认站点 |
 | 五站后台 | `http://<各站域名>/admin/` | `admin` + 后台密码 | 建议带结尾斜杠（`/admin` 会 307 跳转） |
 | 部署 / webhook 日志 | 服务器 `/www/wwwroot/pysite/scripts/k3s-deploy.log`、`webhook.log` | SSH | `tail -f` 实时查看 |
 
-> 服务器 IP、SSH 凭据、Dashboard Token、WebHook Token 等真实值不入库，存放在服务器本地或团队密码管理器。
+> 服务器 IP、域名、SSH 凭据等真实值不入库；Dashboard Token / WebHook Token 由部署脚本自动随机生成，
+统一保存在服务器 `k8s/secrets/`（已 gitignore），不写任何系统目录，无需人工改密码。
 
 ## 服务器部署（K3s 容器化）
 
@@ -99,9 +102,10 @@ servicelb / local-storage，系统 Pod 仅 CoreDNS，2 核 / 1.9G 内存跑五�
 
 ### K3s 管理界面（Dashboard）
 
-- 入口：`http://<服务器IP>:10000/`（nginx 反代 + Basic Auth 双重保护，反代配置
+- 入口：`http://<服务器IP>:10000/`（nginx 反代，无 Basic Auth，反代配置
   `/www/server/panel/vhost/nginx/k8s-dashboard.conf`，NodePort 30100 → 对外 10000）；
-- 第一层 Basic Auth：`k8sadmin` / `<SSH密码>`；第二层 Dashboard Token：服务器 `/root/dashboard-token.txt`（有效期 1 年）；
+- 登录即 Dashboard 自带界面：粘贴 Token（服务器 `k8s/secrets/dashboard-token.txt`，有效期 1 年，
+  由 `k8s/provision-secrets.sh` 自动生成）；
 - 可视化管理 Pod / Deployment / 日志 / 重启 / 回滚；因禁用 metrics-server 无 CPU/内存曲线；
 - 部署清单在仓库 `k8s/`（namespace / 五站 Deployment / Dashboard / webhook / 部署脚本源），自包含可随时
   `kubectl apply -f k8s/` 重建，详见 `k8s/README.md`。

@@ -15,23 +15,33 @@
 
 ## 端口
 
-| 站点 | 端口 | 域名 |
-|---|---|---|
-| nanjing | 8101 | nanjingzhutao.com |
-| hefei | 8102 | hefeizhupin.com |
-| xuzhou | 8103 | xuzhoujiushuo.com |
-| wuxi | 8104 | wuxijunxin.com |
-| hangzhou | 8105 | hangzhouzhiyu.net |
+| 站点 | 端口 |
+|---|---|
+| nanjing | 8101 |
+| hefei | 8102 |
+| xuzhou | 8103 |
+| wuxi | 8104 |
+| hangzhou | 8105 |
+
+> 域名属敏感信息不入库，以服务器 nginx 反代配置与各站 `site.json` 为准。
 
 Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需改动。
+
+## 凭据（自动生成，无需人工设置）
+
+`k8s/provision-secrets.sh`（幂等，部署脚本每次部署都会自动调用）：
+
+- Dashboard Token：缺失时随机生成 → `k8s/secrets/dashboard-token.txt`（有效期 1 年）
+- WebHook Token：缺失时随机生成 → `k8s/secrets/webhook-token.txt`，并自动写入 webhook-receiver
+- 统一存放在本目录 `secrets/`（.gitignore 已忽略），不写 `/root`、`/www/server` 等系统目录
+- 重新生成：删除 secrets/ 下对应文件后重跑脚本（或下次部署自动补齐）
 
 ## 管理界面
 
 - Kubernetes Dashboard：NodePort 30100
-- 外部访问：`http://<服务器IP>:10000/`（nginx 反代 + Basic Auth）
-  - Basic Auth：`k8sadmin` / 见服务器 `/www/server/nginx/conf/k8s-dashboard.htpasswd`
-  - 登录后用 ServiceAccount token：`/root/dashboard-token.txt`（有效期 1 年）
-- 更新 token：`kubectl -n kubernetes-dashboard create token admin-user --duration=8760h`
+- 外部访问：`http://<服务器IP>:10000/`（nginx 反代，无 Basic Auth）
+- 登录即 Dashboard 自带界面：粘贴 Token（服务器 `k8s/secrets/dashboard-token.txt`）
+- 手动更新 token：`kubectl -n kubernetes-dashboard create token admin-user --duration=8760h`
 - 接收器健康检查：`http://<服务器IP>:8300/healthz`（200 = 自动部署链路正常）
 - 全部运维入口汇总见仓库根 `README.md` 的「运维入口速查」
 

@@ -21,6 +21,9 @@ fi
 cd "$REPO"
 log "===== K3s 部署开始 ====="
 
+# 0. 凭据自动配置（幂等：Dashboard Token / WebHook Token 缺失时随机生成，存 k8s/secrets/）
+bash "$REPO/k8s/provision-secrets.sh" 2>&1 | while IFS= read -r l; do log "凭据: $l"; done
+
 # 1. 拉代码（storage/ 被 gitignore，git reset --hard 不会碰挂载的数据卷）
 log "git pull..."
 git config --global --replace-all safe.directory "$REPO" >/dev/null 2>&1 || true
@@ -57,10 +60,12 @@ done
 
 # 5. 健康校验（五站首页必须 HTTP 200）
 if [ "$FAILED" -eq 0 ]; then
-  for pair in "nanjingzhutao.com" "hefeizhupin.com" "xuzhoujiushuo.com" "wuxijunxin.com" "hangzhouzhiyu.net"; do
-    code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $pair" --max-time 10 http://127.0.0.1/)
+  i=1
+  for s in $SITES; do
+    port=$((8100 + i)); i=$((i + 1))
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:$port/")
     if [ "$code" != "200" ]; then
-      log "健康校验失败 $pair HTTP=$code"
+      log "健康校验失败 $s (127.0.0.1:$port) HTTP=$code"
       FAILED=1
     fi
   done
