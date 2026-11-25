@@ -41,6 +41,10 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
 - Kubernetes Dashboard：NodePort 30100
 - 外部访问：`http://<服务器IP>:10000/`（nginx 反代，无 Basic Auth）
 - 登录即 Dashboard 自带界面：粘贴 Token（服务器 `k8s/secrets/dashboard-token.txt`）
+- 资源都在 `pysite` 命名空间，直接访问 `#/workloads?namespace=pysite`；Ingress 页为空属正常
+  （极简安装已禁用 Ingress 控制器，流量走宿主机 nginx 反代）
+- 浏览器若自动跳过登录页，是 localStorage 里存有旧 token：右上角退出登录，
+  或清除该站点 Local Storage 后刷新，再粘贴新 Token
 - 手动更新 token：`kubectl -n kubernetes-dashboard create token admin-user --duration=8760h`
 - 接收器健康检查：`http://<服务器IP>:8300/healthz`（200 = 自动部署链路正常）
 - 全部运维入口汇总见仓库根 `README.md` 的「运维入口速查」
