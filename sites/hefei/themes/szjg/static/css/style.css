@@ -363,3 +363,7 @@ html,body{overflow-x:hidden;overflow-x:clip}
 
 /* 导航项 wrapper（子菜单移出 <a>，修复嵌套锚点被浏览器拆散的问题） */
 .jg-nav-item{position:relative;display:flex;align-items:stretch}
+
+/* ===== 卡片文字超出隐藏：标题单行省略，简介/内容多行截断 ===== */
+.jg-layout-card h3,.jg-case-card h3,.jg-news-lead-body h3,.jg-news-row h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jg-layout-card p,.jg-news-lead-body p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}

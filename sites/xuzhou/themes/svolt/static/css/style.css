@@ -121,6 +121,10 @@ h1,h2,h3,h4{font-weight:600}
 .sv-sol-2 .sv-sol-bg{background:linear-gradient(160deg,#22307E,#0a142e)}
 .sv-sol-3 .sv-sol-bg{background:linear-gradient(160deg,#155a86,#0a142e)}
 .sv-sol-4 .sv-sol-bg{background:linear-gradient(160deg,#1c5a3a,#0a142e)}
+.sv-sol-5 .sv-sol-bg{background:linear-gradient(160deg,#4a2a7a,#0a142e)}
+.sv-sol-6 .sv-sol-bg{background:linear-gradient(160deg,#0e5f5a,#0a142e)}
+.sv-sol-7 .sv-sol-bg{background:linear-gradient(160deg,#7a4a1e,#0a142e)}
+.sv-sol-8 .sv-sol-bg{background:linear-gradient(160deg,#7a2a4a,#0a142e)}
 .sv-sol-bg::after{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cpath d='M45 9l18 10v20L45 49 27 39V19z' fill='none' stroke='rgba(255,255,255,.08)' stroke-width='2'/%3E%3C/svg%3E")}
 .sv-sol-body{position:relative;z-index:2;padding:26px 24px;color:#fff}
 .sv-sol-body em{font-style:normal;font-size:44px;font-weight:700;color:rgba(255,177,0,.85);line-height:1}
@@ -369,3 +373,7 @@ html,body{overflow-x:hidden;overflow-x:clip}
 
 /* 导航项 wrapper（子菜单移出 <a>，修复嵌套锚点被浏览器拆散的问题） */
 .sv-nav-item{position:relative;display:flex;align-items:stretch}
+
+/* ===== 卡片文字超出隐藏：标题单行省略，简介/内容多行截断 ===== */
+.sv-sol-body h3,.sv-case-body h3,.sv-news-item-txt h3,.sv-news-lead-body h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sv-sol-body p,.sv-news-item-txt p,.sv-news-lead-body p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}

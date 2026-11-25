@@ -31,6 +31,7 @@
     <div class="zt-fields-grid">
       {% for t in svc[:8] %}
       <a href="{{ url_content(t) }}" class="zt-field">
+        <div class="zt-field-img"><img src="{{ oss(t.cover, 320, 180) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
         <em>0{{ loop.index }}</em>
         <span class="zt-field-en">{{ t.subtitle | default('SERVICE '~loop.index) | truncate(24) }}</span>
         <h3>{{ t.title | truncate(20) }}</h3>

@@ -377,3 +377,12 @@ html,body{overflow-x:hidden;overflow-x:clip}
 
 /* 导航项 wrapper（子菜单移出 <a>，修复嵌套锚点被浏览器拆散的问题） */
 .zt-nav-item{position:relative;display:flex;align-items:stretch}
+
+/* ===== 服务项目卡片配图 ===== */
+.zt-field-img{height:140px;border-radius:6px;overflow:hidden;margin-bottom:14px;background:var(--zt-bg,#eef2f8)}
+.zt-field-img img{width:100%;height:100%;object-fit:cover;display:block;transition:.35s}
+.zt-field:hover .zt-field-img img{transform:scale(1.05)}
+
+/* ===== 卡片文字超出隐藏：标题单行省略，简介/内容多行截断 ===== */
+.zt-field h3,.zt-case-body h3,.zt-news-body h3,.zt-news-row h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zt-field p,.zt-news-body p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}

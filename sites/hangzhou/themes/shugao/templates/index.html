@@ -55,6 +55,7 @@
     <div class="sg-svc-grid">
       {% for t in svc[:9] %}
       <a href="{{ url_content(t) }}" class="sg-svc-card">
+        <div class="sg-svc-cover"><img src="{{ oss(t.cover, 384, 160) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
         <span class="sg-svc-num">0{{ loop.index }}</span>
         <h3>{{ t.title | truncate(20) }}</h3>
         <p>{{ t.summary | default('提供专业、高效的解决方案与服务保障，助力企业稳健发展。') | truncate(60) }}</p>
