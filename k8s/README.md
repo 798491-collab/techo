@@ -75,9 +75,25 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
 1. `git fetch + reset --hard`（更新代码，不碰 storage）
 2. 数据卷就绪检查：五站 `sites/<站点>/storage/site.db` 存在且非空（storage 是 gitignore 的
    挂载数据卷，git 不触碰；此检查只防目录结构异常，无备份/复制开销）
-3. `kubectl rollout restart` 五站 Deployment（hostPath 代码更新后重启即生效）
+3. 发版：把 commit、提交说明、发版时间写入五站 Deployment 的 Pod 模板注记（触发一次滚动
+   更新 = 一个新修订版本，代码经 hostPath 挂载，重启即生效）
 4. 等待就绪 + 五站 HTTP 200 健康检查
-5. 任一失败 → 自动回滚代码 + 重启
+5. 任一失败 → 自动回滚（代码 reset + `kubectl rollout undo` 回退修订版本）
+
+## 发版与部署记录
+
+每次 git push 发版后，可以从以下几处查到记录：
+
+| 记录 | 位置 | 内容 |
+|------|------|------|
+| 发版清单 | 服务器 `scripts/release-history.txt` | 每次成功发版一行：时间 + commit + 提交说明 + 作者；失败/回滚也记录 |
+| 部署过程 | 服务器 `scripts/k3s-deploy.log` | 每次部署的完整过程（拉取版本、健康检查、回滚原因等） |
+| 修订历史 | KubePi → 工作负载 → 部署 → 详情 → 「修订历史」 | 每个修订版本的 Pod 注记里有 `pysite/commit`、`pysite/commit-subject`、`pysite/deployed-at`，可对比任意两版并一键回滚 |
+| 命令行 | `kubectl -n pysite rollout history deployment/pysite-<站>` | 修订版本列表 |
+
+回滚到上一版：`kubectl -n pysite rollout undo deployment/pysite-<站>`（或直接在 KubePi 修订
+历史里点回滚）。注意：代码经 hostPath 挂载，回滚 Pod 的同时需 `git reset --hard <旧 commit>`
+同步代码；部署脚本的自动回滚已包含这两步。
 
 **脚本在 `/root/`（仓库外），不会被 git pull 覆盖。** 仓库内的 `k8s-deploy.sh` 是源备份。
 
@@ -88,6 +104,8 @@ export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 kubectl -n pysite get pod -o wide          # 五站状态
 kubectl -n pysite logs -l app=pysite-hangzhou --tail=50
 kubectl -n pysite rollout restart deployment/pysite-hangzhou
+kubectl -n pysite rollout history deployment/pysite-hangzhou   # 发版修订历史
+kubectl -n pysite rollout undo deployment/pysite-hangzhou      # 回滚到上一修订版
 kubectl get pods -A                        # 全部 Pod
 systemctl status k3s                       # K3s 本身
 ```

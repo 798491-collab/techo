@@ -65,6 +65,7 @@
 | 五站前台 | `http://<各站域名>/` | — | 必须用域名访问，IP 会落到 nginx 默认站点 |
 | 五站后台 | `http://<各站域名>/admin/` | `admin` + 后台密码（部署时自动随机生成） | 密码统一见服务器 `k8s/secrets/credentials.txt`；建议带结尾斜杠（`/admin` 会 307 跳转） |
 | 部署 / webhook 日志 | 服务器 `/www/wwwroot/pysite/scripts/k3s-deploy.log`、`webhook.log` | SSH | `tail -f` 实时查看 |
+| 发版记录 | 服务器 `/www/wwwroot/pysite/scripts/release-history.txt` | SSH | 每次成功发版一行：时间 + commit + 提交说明 + 作者；也可在 KubePi「部署 → 修订历史」查看并回滚 |
 
 > 服务器 IP、域名、SSH 凭据等真实值不入库。所有凭据（KubePi 管理密码、WebHook Token、五站后台密码）
 > 由部署脚本自动随机生成，统一登记在服务器 `k8s/secrets/credentials.txt`（权限 600，gitignore），
@@ -99,9 +100,11 @@ servicelb / local-storage，系统 Pod 仅 CoreDNS，2 核 / 1.9G 内存跑五�
      并统一写入服务器 `k8s/secrets/credentials.txt`（类似 MySQL 安装后打印临时密码）；
   1. `git fetch + reset --hard` 更新代码（`storage/` 被 gitignore，不受影响）；
   2. **数据卷就绪检查**：五站 `sites/<站点>/storage/site.db` 存在且非空，异常立即中止；
-  3. `kubectl rollout restart` 五站 Deployment（滚动重启）；
-  4. 健康检查：五站 HTTP 200，失败自动 `rollout undo` 回滚。
-- **git push 即部署，无需人工确认**；部署日志 `scripts/k3s-deploy.log`（webhook 日志 `scripts/webhook.log`）。
+  3. **发版记录**：把 commit、提交说明、发版时间写入五站 Deployment 修订历史
+     （KubePi「部署 → 修订历史」可查看每次发版内容并一键回滚）并滚动更新生效；
+  4. 健康检查：五站 HTTP 200，失败自动 `rollout undo` 回滚（并记入发版清单）。
+- **git push 即部署，无需人工确认**；部署日志 `scripts/k3s-deploy.log`（webhook 日志
+  `scripts/webhook.log`），发版清单 `scripts/release-history.txt`。
 
 ### 容器管理界面（KubePi）
 

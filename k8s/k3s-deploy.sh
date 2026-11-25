@@ -5,6 +5,7 @@ set -euo pipefail
 
 REPO=/www/wwwroot/pysite
 LOG=$REPO/scripts/k3s-deploy.log
+HISTORY=$REPO/scripts/release-history.txt
 SITES='nanjing hefei xuzhou wuxi hangzhou'
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 NS=pysite
@@ -44,11 +45,15 @@ for s in $SITES; do
 done
 log "数据卷就绪（5 站 site.db 存在且非空）"
 
-# 3. 滚动重启五站（代码通过 hostPath 挂载，重启即加载新代码）
+# 3. 发版：把 commit + 时间写入 Pod 模板注记（触发一次滚动更新 = 一个新修订版本）
+#    KubePi 的 Deployment「修订历史」里即可看到每次发版的版本号与时间，并支持一键回滚
+SUBJ=$(git log -1 --format='%s' "$NEW" | sed 's/["\\]/ /g')
+AUTHOR=$(git log -1 --format='%an' "$NEW" | sed 's/["\\]/ /g')
 for s in $SITES; do
-  kubectl -n "$NS" rollout restart "deployment/pysite-$s" >/dev/null
+  kubectl -n "$NS" patch "deployment/pysite-$s" --type=strategic -p \
+    "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"pysite/commit\":\"$NEW\",\"pysite/commit-subject\":\"$SUBJ\",\"pysite/deployed-at\":\"$(date '+%F %T')\"}}}}}" >/dev/null
 done
-log "已触发五站滚动重启"
+log "已发版 $NEW「$SUBJ」($AUTHOR)，五站滚动更新中"
 
 # 4. 等待全部就绪（超时 120s）
 FAILED=0
@@ -76,11 +81,16 @@ if [ "$FAILED" -ne 0 ]; then
   log "部署失败，执行回滚到 $OLD"
   git reset --hard "$OLD"
   for s in $SITES; do
-    kubectl -n "$NS" rollout restart "deployment/pysite-$s" >/dev/null
+    kubectl -n "$NS" rollout undo "deployment/pysite-$s" >/dev/null 2>&1 || \
+      kubectl -n "$NS" rollout restart "deployment/pysite-$s" >/dev/null
   done
+  echo "[$(date '+%F %T')] FAIL  $NEW -> 回滚 $OLD  $SUBJ" >> "$HISTORY"
   log "回滚完成，请人工检查"
   exit 1
 fi
 
 log "健康校验通过，五站全部 HTTP 200"
 log "===== 部署完成 $NEW ====="
+# 发版清单：每次成功发版追加一行（时间 版本号 提交说明 作者），即「发版记录」
+mkdir -p "$(dirname "$HISTORY")"
+echo "[$(date '+%F %T')] OK    $NEW  $SUBJ  ($AUTHOR)" >> "$HISTORY"
