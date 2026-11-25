@@ -32,6 +32,8 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
   - Basic Auth：`k8sadmin` / 见服务器 `/www/server/nginx/conf/k8s-dashboard.htpasswd`
   - 登录后用 ServiceAccount token：`/root/dashboard-token.txt`（有效期 1 年）
 - 更新 token：`kubectl -n kubernetes-dashboard create token admin-user --duration=8760h`
+- 接收器健康检查：`http://<服务器IP>:8300/healthz`（200 = 自动部署链路正常）
+- 全部运维入口汇总见仓库根 `README.md` 的「运维入口速查」
 
 ## 自动部署（K3s 自建 webhook 接收器）
 

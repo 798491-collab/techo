@@ -52,6 +52,20 @@
 
 无需依赖仓库根目录的任何文件；`venv/` 只是服务器 K3s 部署的共享依赖目录，本地单站运行用不到。
 
+## 运维入口速查
+
+| 入口 | 地址 | 认证 | 说明 |
+| --- | --- | --- | --- |
+| **K3s Dashboard**（容器管理界面） | `http://<服务器IP>:10000/` | 两层：① Basic Auth `k8sadmin`（密码同 SSH）；② Dashboard Token（服务器 `/root/dashboard-token.txt`，有效期 1 年） | 可视化管理 Pod / Deployment / 日志 / 重启 / 回滚；nginx 反代 + Basic Auth 双重保护 |
+| **Webhook 接收器健康检查** | `http://<服务器IP>:8300/healthz` | 无（token 校验只在 `/hook` 触发时） | 返回 200 = 自动部署链路正常 |
+| **SSH 运维（kubectl）** | `ssh root@<服务器IP>` | SSH 凭据 | 登录后 `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml` 再执行 kubectl 命令 |
+| K3s API Server | `https://<服务器IP>:6443` | kubeconfig 客户端证书 | 仅本机/内网管理用，不对公网开放 |
+| 五站前台 | `http://<各站域名>/` | — | 必须用域名访问，IP 会落到 nginx 默认站点 |
+| 五站后台 | `http://<各站域名>/admin/` | `admin` + 后台密码 | 建议带结尾斜杠（`/admin` 会 307 跳转） |
+| 部署 / webhook 日志 | 服务器 `/www/wwwroot/pysite/scripts/k3s-deploy.log`、`webhook.log` | SSH | `tail -f` 实时查看 |
+
+> 服务器 IP、SSH 凭据、Dashboard Token、WebHook Token 等真实值不入库，存放在服务器本地或团队密码管理器。
+
 ## 服务器部署（K3s 容器化）
 
 生产环境运行在服务器上的**极简 K3s**（v1.28.5+k3s1，已禁用 traefik / metrics-server /
