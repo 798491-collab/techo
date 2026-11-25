@@ -33,19 +33,24 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
 
 - Dashboard Token：缺失时随机生成 → `k8s/secrets/dashboard-token.txt`（有效期 1 年）
 - WebHook Token：缺失时随机生成 → `k8s/secrets/webhook-token.txt`，并自动写入 webhook-receiver
+- KubePi 集群导入 Token：首次部署时手动生成 → `k8s/secrets/kubepi-cluster-token.txt`
+  （`kubectl -n kube-system create token kubepi-user --duration=87600h`，有效期 10 年）
+- KubePi 管理员密码：初始 `admin / kubepi`，首次登录由系统**强制修改**，无需脚本管理
 - 统一存放在本目录 `secrets/`（.gitignore 已忽略），不写 `/root`、`/www/server` 等系统目录
 - 重新生成：删除 secrets/ 下对应文件后重跑脚本（或下次部署自动补齐）
 
-## 管理界面
+## 管理界面（KubePi，中文）
 
-- Kubernetes Dashboard：NodePort 30100
-- 外部访问：`http://<服务器IP>:10000/`（nginx 反代，无 Basic Auth）
-- 登录即 Dashboard 自带界面：粘贴 Token（服务器 `k8s/secrets/dashboard-token.txt`）
-- 资源都在 `pysite` 命名空间，直接访问 `#/workloads?namespace=pysite`；Ingress 页为空属正常
-  （极简安装已禁用 Ingress 控制器，流量走宿主机 nginx 反代）
-- 浏览器若自动跳过登录页，是 localStorage 里存有旧 token：右上角退出登录，
-  或清除该站点 Local Storage 后刷新，再粘贴新 Token
-- 手动更新 token：`kubectl -n kubernetes-dashboard create token admin-user --duration=8760h`
+- **KubePi**：现代化中文 K8s 面板（1Panel 团队出品），NodePort 30110
+- 外部访问：`http://<服务器IP>:10000/`（nginx 反代，含 WebSocket 支持）
+- 登录：初始 `admin / kubepi`，**首次登录强制设置新密码**（未改密码所有 API 返回 403）
+- 首次使用需导入集群：「集群管理 → 添加集群」→ 认证方式 Token：
+  - API 地址 `https://<服务器IP>:6443`；Token 用服务器 `k8s/secrets/kubepi-cluster-token.txt`
+    （kubepi-user SA，cluster-admin，有效期 10 年）；跳过 TLS 校验（自签证书）
+- 数据持久化：宿主机 `/www/wwwroot/pysite/kubepi-data/`；重建：`kubectl apply -f k8s/kubepi.yaml`
+- 旧 Kubernetes Dashboard 清单保留在 `k8s/dashboard.yaml`（副本数 0 未运行；恢复：
+  `kubectl -n kubernetes-dashboard scale deploy kubernetes-dashboard --replicas=1`，
+  Token 在 `k8s/secrets/dashboard-token.txt`）
 - 接收器健康检查：`http://<服务器IP>:8300/healthz`（200 = 自动部署链路正常）
 - 全部运维入口汇总见仓库根 `README.md` 的「运维入口速查」
 

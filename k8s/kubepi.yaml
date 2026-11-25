@@ -1,0 +1,79 @@
+# KubePi —— 现代化中文 Kubernetes 管理面板（1Panel 团队出品，替代 Kubernetes Dashboard）
+# 访问：http://<服务器IP>:10000/（nginx 反代 NodePort 30110）
+# 默认账号 admin / kubepi，首次登录后立即修改密码；集群数据持久化在宿主机 kubepi-data/
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubepi-user
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubepi-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: kubepi-user
+    namespace: kube-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubepi
+  namespace: kube-system
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30110
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: kubepi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubepi
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: kubepi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kubepi
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kubepi
+    spec:
+      serviceAccountName: kubepi-user
+      containers:
+        - name: kubepi
+          image: 1panel/kubepi:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kubepi
+          resources:
+            requests:
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: data
+          hostPath:
+            path: /www/wwwroot/pysite/kubepi-data
+            type: DirectoryOrCreate

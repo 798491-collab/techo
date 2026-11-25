@@ -58,7 +58,7 @@
 
 | 入口 | 地址 | 认证 | 说明 |
 | --- | --- | --- | --- |
-| **K3s Dashboard**（容器管理界面） | `http://<服务器IP>:10000/` | 仅 Dashboard 自带登录界面：粘贴 Token（服务器 `k8s/secrets/dashboard-token.txt`，有效期 1 年） | 可视化管理 Pod / Deployment / 日志 / 重启 / 回滚；无 Basic Auth，凭据缺失时由 `k8s/provision-secrets.sh` 自动随机生成 |
+| **KubePi**（容器管理界面，中文） | `http://<服务器IP>:10000/` | KubePi 自带登录：初始 `admin / kubepi`，**首次登录强制设置新密码**（不改密码所有功能不可用） | 现代化中文面板，可视化管理 Pod / Deployment / 日志 / 终端 / 重启；集群首次使用需导入（见下文「容器管理界面」） |
 | **Webhook 接收器健康检查** | `http://<服务器IP>:8300/healthz` | 无（token 校验只在 `/hook` 触发时） | 返回 200 = 自动部署链路正常；WebHook Token 同样由 provision 脚本自动生成（`k8s/secrets/webhook-token.txt`） |
 | **SSH 运维（kubectl）** | `ssh root@<服务器IP>` | SSH 凭据 | 登录后 `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml` 再执行 kubectl 命令 |
 | K3s API Server | `https://<服务器IP>:6443` | kubeconfig 客户端证书 | 仅本机/内网管理用，不对公网开放 |
@@ -72,7 +72,7 @@
 ## 服务器部署（K3s 容器化）
 
 生产环境运行在服务器上的**极简 K3s**（v1.28.5+k3s1，已禁用 traefik / metrics-server /
-servicelb / local-storage，系统 Pod 仅 CoreDNS，2 核 / 1.9G 内存跑五站 + Dashboard + webhook）。
+servicelb / local-storage，系统 Pod 仅 CoreDNS，2 核 / 1.9G 内存跑五站 + KubePi + webhook）。
 
 ### 架构
 
@@ -100,15 +100,21 @@ servicelb / local-storage，系统 Pod 仅 CoreDNS，2 核 / 1.9G 内存跑五�
   4. 健康检查：五站 HTTP 200，失败自动 `rollout undo` 回滚。
 - **git push 即部署，无需人工确认**；部署日志 `scripts/k3s-deploy.log`（webhook 日志 `scripts/webhook.log`）。
 
-### K3s 管理界面（Dashboard）
+### 容器管理界面（KubePi）
 
-- 入口：`http://<服务器IP>:10000/`（nginx 反代，无 Basic Auth，反代配置
-  `/www/server/panel/vhost/nginx/k8s-dashboard.conf`，NodePort 30100 → 对外 10000）；
-- 登录即 Dashboard 自带界面：粘贴 Token（服务器 `k8s/secrets/dashboard-token.txt`，有效期 1 年，
-  由 `k8s/provision-secrets.sh` 自动生成）；
-- 可视化管理 Pod / Deployment / 日志 / 重启 / 回滚；因禁用 metrics-server 无 CPU/内存曲线；
-- 部署清单在仓库 `k8s/`（namespace / 五站 Deployment / Dashboard / webhook / 部署脚本源），自包含可随时
-  `kubectl apply -f k8s/` 重建，详见 `k8s/README.md`。
+- 入口：`http://<服务器IP>:10000/`（nginx 反代 → NodePort 30110，反代配置
+  `/www/server/panel/vhost/nginx/k8s-dashboard.conf`）；
+- **首次使用两步**：
+  1. 登录：初始账号 `admin / kubepi`，登录后**强制设置新密码**（不设置新密码所有功能返回 403，杜绝忘改默认密码）；
+  2. 导入集群：左侧「集群管理 → 添加集群」，认证方式选 Token：
+     - API 地址：`https://<服务器IP>:6443`
+     - Token：服务器 `cat /www/wwwroot/pysite/k8s/secrets/kubepi-cluster-token.txt`（有效期 10 年）
+     - TLS 校验：跳过（自签证书）
+- 中文界面，可视化管理 Pod / Deployment / 日志 / Web 终端 / 重启；数据持久化在宿主机
+  `/www/wwwroot/pysite/kubepi-data/`（gitignore）；
+- 部署清单在仓库 `k8s/kubepi.yaml`，可 `kubectl apply -f k8s/kubepi.yaml` 重建，详见 `k8s/README.md`；
+- 旧 Kubernetes Dashboard 清单保留在 `k8s/dashboard.yaml`（当前副本数 0 未运行，需要时
+  `kubectl -n kubernetes-dashboard scale deploy kubernetes-dashboard --replicas=1` 恢复）。
 
 ### 日常维护命令（SSH 执行）
 
@@ -127,7 +133,7 @@ tail -f /www/wwwroot/pysite/scripts/k3s-deploy.log       # 部署日志
 ### 访问方式与备份
 
 - 只启用 HTTP(80)，未开 SSL；必须用域名 `http://...` 访问，IP 访问会落到 nginx 默认站点（正常现象）；
-- K3s 自身：API Server 6443（仅本机管理）、Dashboard NodePort 30100（经反代 10000 对外）；
+- K3s 自身：API Server 6443（仅本机管理）、KubePi NodePort 30110（经反代 10000 对外）；
 - **备份**：五站 `storage/` 目录与各站 `.env` 是全部状态；完整备份（storage + .env + nginx 配置）
   存放在服务器 `/root/pysite-backup-<时间戳>/`，最新备份路径记录在 `/root/.pysite-latest-backup`；
 - 单站回滚：`kubectl -n pysite rollout undo deploy/pysite-<站点名>`。
