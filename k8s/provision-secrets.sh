@@ -44,18 +44,20 @@ for i in $(seq 1 10); do
 done
 if [ "$KUBEPI_READY" -eq 1 ]; then
   CJ=$(mktemp)
-  # 先试当前密码能否登录（已改过则跳过，幂等）
-  if curl -s -c "$CJ" -H 'Content-Type: application/json' \
-      -d "{\"username\":\"admin\",\"password\":\"$KPWD\"}" "$KUBEPI_URL/sessions" \
-      | grep -q '"success":true'; then
-    if [ ! -s "$DIR/kubepi-admin.txt" ]; then printf '%s\n' "$KPWD" > "$DIR/kubepi-admin.txt"; fi
-  # 否则用默认密码登录并改为随机密码
-  elif curl -s -c "$CJ" -H 'Content-Type: application/json' \
-      -d '{"username":"admin","password":"kubepi"}' "$KUBEPI_URL/sessions" \
-      | grep -q '"success":true' && \
-      curl -s -b "$CJ" -X PUT -H 'Content-Type: application/json' \
-      -d "{\"oldPassword\":\"kubepi\",\"newPassword\":\"$KPWD\"}" "$KUBEPI_URL/sessions/password" \
-      | grep -q '"success":true'; then
+  login_ok() {  # $1=密码；登录成功返回 0（cookie 写入 $CJ）
+    curl -s -c "$CJ" -H 'Content-Type: application/json' \
+      -d "{\"username\":\"admin\",\"password\":\"$1\"}" "$KUBEPI_URL/sessions" \
+      | grep -qE '"success"[[:space:]]*:[[:space:]]*true'
+  }
+  if login_ok "$KPWD"; then
+    # 已是随机密码（幂等重入），确保文件存在
+    [ -s "$DIR/kubepi-admin.txt" ] || printf '%s\n' "$KPWD" > "$DIR/kubepi-admin.txt"
+    echo "KubePi 管理员密码已就绪: $DIR/kubepi-admin.txt"
+  elif login_ok "kubepi" && \
+       curl -s -b "$CJ" -X PUT -H 'Content-Type: application/json' \
+       -d "{\"oldPassword\":\"kubepi\",\"newPassword\":\"$KPWD\"}" "$KUBEPI_URL/sessions/password" >/dev/null && \
+       login_ok "$KPWD"; then
+    # 改密后用新密码实际登录验证通过，才认定成功并落盘
     printf '%s\n' "$KPWD" > "$DIR/kubepi-admin.txt"
     echo "已生成 KubePi 管理员密码（默认 admin/kubepi 已改为随机密码）: $DIR/kubepi-admin.txt"
   else
