@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% import "common.html" as cm %}
+{% block seo %}{{ cm.seo(site, '搜索 - ' ~ (keyword or '站内搜索')) }}{% endblock %}
+{% block content %}
+  {{ cm.breadcrumb(site, [{'name':'搜索'}]) }}
+  <section class="sec inner-sec">
+    <div class="container">
+      <div class="page-head"><h1>站内搜索</h1></div>
+      <form class="search-box" action="/search" method="get"><input name="keyword" value="{{keyword}}" placeholder="输入关键词搜索…"><button type="submit">搜索</button></form>
+      <div class="list-grid">
+        {% for item in items %}{{ cm.content_item(item) }}{% endfor %}
+      </div>
+      {% if not items %}<div class="empty">未找到与“{{keyword}}”相关的内容</div>{% endif %}
+    </div>
+  </section>
+{% endblock %}

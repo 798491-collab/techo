@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>window.STATIC_VER='__STATIC_VER__';</script>
+  <title>__SITE_NAME__ - AI 轻量化管理后台</title>
+  <link rel="stylesheet" href="/admin/vendor/bootstrap/bootstrap.min.css?v=__STATIC_VER__-b17">
+  <link rel="stylesheet" href="/admin/vendor/bootstrap-icons/bootstrap-icons.css?v=__STATIC_VER__-b17">
+  <link rel="stylesheet" href="/admin/vendor/wangeditor/style.css?v=__STATIC_VER__-b17">
+  <link rel="stylesheet" href="/admin/css/admin.css?v=__STATIC_VER__-b17">
+</head>
+<body class="theme-light">
+<!-- ============ 全局 Loading 遮罩 ============ -->
+<div id="global-loading" class="global-loading show">
+  <div class="gl-inner">
+    <img class="gl-spinner" src="/admin/static/svg/loading-2.svg?v=__STATIC_VER__-b17" alt="">
+  </div>
+</div>
+
+<!-- ============ 登录（分栏式） ============ -->
+<div id="login-page" class="login-page" style="display:none">
+  <div class="login-shell">
+    <!-- 左：品牌展示 -->
+    <section class="login-hero">
+	<div class="videoContainer"><video id="login-video" autoplay muted loop playsinline disablepictureinpicture preload="auto" poster="./static/media/loginAnimationPoster.9aa924bfe619e71d5d29.png?v=__STATIC_VER__-b17" class="videoBG"><source src="/admin/static/media/videoBG.17363418b3c2246a0e27.mp4?v=__STATIC_VER__-b17" type="video/mp4"></video></div>
+      <div class="lh-grid"></div>
+      <div class="lh-glow lh-glow-1"></div>
+      <div class="lh-glow lh-glow-2"></div>
+      <div class="lh-orbit"><span></span><span></span><span></span></div>
+      <div class="lh-inner">
+<!--        <div class="lh-main">-->
+<!--          <h1 class="lh-title">AI 轻量化<span>管理后台</span></h1>-->
+<!--          <p class="lh-desc">现代化管理平台，支持本地、私有、云端多种方式灵活部署。采用多站独立架构，严格实现站点数据隔离；内置多款主题，支持一键切换，快速更换界面风格。插件化扩展能力，搭配细粒度权限体系，访问权限可控，全方位保障业务安全稳定。适用于站点运维、资源统一管控、SaaS 多实例运营等场景，提供社区版与商业版双重授权方案。</p>-->
+<!--        </div>-->
+        <div class="lh-foot"><i class="bi bi-shield-check"></i> 安全可靠 · 稳定高效的企业级管理平台</div>
+      </div>
+    </section>
+    <!-- 右：登录表单 -->
+    <section class="login-panel">
+      <div class="login-card">
+        <h2 class="login-h">欢迎登录</h2>
+        <p class="login-desc">AI 轻量化管理后台<span class="login-ver"></span></p>
+        <form id="login-form">
+          <div class="lf-group">
+            <label class="form-label">账号</label>
+            <div class="lf-input"><i class="bi bi-person"></i><input class="form-control" id="login-user" autocomplete="username" placeholder="请输入账号"></div>
+          </div>
+          <div class="lf-group">
+            <label class="form-label">密码</label>
+            <div class="lf-input"><i class="bi bi-lock"></i><input class="form-control" type="password" id="login-pass" autocomplete="current-password" placeholder="请输入密码"><button type="button" class="lf-eye" id="login-eye" tabindex="-1" aria-label="显示密码"><i class="bi bi-eye"></i></button></div>
+          </div>
+          <div class="lf-group" id="captcha-group" style="display:none">
+            <label class="form-label">验证码</label>
+            <div class="lf-input"><i class="bi bi-shield-lock"></i><input class="form-control" id="login-captcha" maxlength="4" autocomplete="off" placeholder="请输入验证码">
+              <span class="lf-captcha" id="login-captcha-img" data-bs-toggle="tooltip" data-bs-title="点击刷新验证码"></span></div>
+          </div>
+          <div class="login-meta">
+            <label class="login-remember"><input type="checkbox" id="login-remember"> <span>记住账号</span></label>
+            <a href="#" id="login-forgot">忘记密码？</a>
+          </div>
+          <button class="btn btn-solid theme-primary login-submit btn-loading" type="submit" id="login-btn"><i class="bi bi-box-arrow-in-right"></i> 安全登录</button>
+        </form>
+        <div class="login-foot"><i class="bi bi-info-circle"></i> 请使用管理员账号登录以继续</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="mobile-mask" id="mobile-mask"></div>
+  <aside class="cms-sidenav" id="cms-sidenav">
+    <div class="nav-brand">
+      <div class="nav-logo"><i class="bi bi-layers-half"></i></div>
+      <div class="nav-brand-text"><strong>企业管理系统</strong><small class="nav-slogan">AI 轻量化管理后台</small></div>
+    </div>
+    <div class="nav-search"><i class="bi bi-search"></i><input id="menu-search" placeholder="搜索菜单..."><kbd>⌘K</kbd></div>
+    <nav id="cms-menu" class="cms-menu"></nav>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="toggle-sidebar" data-bs-toggle="tooltip" data-bs-title="收起 / 展开菜单" aria-label="收起菜单"><i class="bi bi-list"></i></button>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="view-site" type="button" data-bs-toggle="tooltip" data-bs-title="查看网站" aria-label="查看网站" onclick="window.open('/','_blank')"><i class="bi bi-box-arrow-up-right"></i></button>
+<!--        <span class="top-divider"></span>-->
+        <button class="icon-btn" id="btn-clear-cache" type="button" data-bs-toggle="tooltip" data-bs-title="清理缓存" aria-label="清理缓存"><i class="bi bi-trash"></i></button>
+        <button class="icon-btn" id="theme-toggle" data-bs-toggle="tooltip" data-bs-title="切换深色 / 浅色主题" aria-label="切换主题"><i class="bi bi-moon-stars"></i></button>
+        <button class="icon-btn" id="btn-refresh" data-bs-toggle="tooltip" data-bs-title="刷新当前页面" aria-label="刷新"><i class="bi bi-arrow-clockwise"></i></button>
+        <div class="dropdown">
+          <button class="user-chip" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" data-bs-title="admin"><span class="avatar"><i class="bi bi-person-circle"></i></span><span id="admin-name" class="visually-hidden">admin</span><i class="bi bi-chevron-down user-caret"></i></button>
+          <ul class="menu user-dropdown">
+            <li><div class="menu-header user-drop-head"><span class="avatar-lg"><i class="bi bi-person-circle"></i></span><div><strong id="admin-name-2">admin</strong><small>超级管理员</small>
+              <small class="drop-login" id="drop-last-login"></small></div></div></li>
+            <li><hr class="menu-divider"></li>
+            <li><a class="menu-item" href="#" id="profile-entry"><i class="bi bi-person"></i> 个人资料</a></li>
+            <li><a class="menu-item" href="#" id="change-pass"><i class="bi bi-key"></i> 修改密码</a></li>
+            <li><hr class="menu-divider"></li>
+            <li><a class="menu-item fg-danger" href="#" id="logout"><i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+    <div class="tabs" id="cms-tabs"></div>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+
+<!-- ============ Toast（右上角） ============ -->
+<div class="toast-stack" id="toasts" popover="manual"></div>
+
+<!-- ============ 通用表单弹窗（点空白/ESC 不关闭） ============ -->
+<dialog class="dialog dialog-lg dialog-scrollable" id="modal" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="dialog-header">
+      <div class="dialog-title-wrap"><h5 class="dialog-title" id="dialog-title">编辑</h5><small class="dialog-subtitle" id="dialog-subtitle"></small></div>
+      <button type="button" class="btn-close" id="modal-x" aria-label="关闭"></button>
+    </div>
+    <div class="dialog-body" id="dialog-body"></div>
+    <div class="dialog-footer">
+      <button class="btn-subtle theme-secondary" id="modal-cancel">取消</button>
+      <button class="btn-solid theme-primary btn-loading" id="modal-save">保存</button>
+    </div>
+</dialog>
+
+<!-- ============ 确认弹窗 ============ -->
+<dialog class="dialog dialog-sm" id="confirm-modal" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="confirm-content">
+    <div class="confirm-body">
+      <div class="confirm-icon" id="confirm-icon"><i class="bi bi-question-lg"></i></div>
+      <h5 class="confirm-title" id="confirm-title">确认操作</h5>
+      <p class="confirm-text" id="confirm-text">确定要执行此操作吗？</p>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn-subtle theme-secondary" id="confirm-cancel">取消</button>
+      <button class="btn-solid theme-danger btn-loading" id="confirm-ok">确定</button>
+    </div>
+  </div>
+</dialog>
+
+<script data-cfasync="false" src="/admin/vendor/bootstrap/bootstrap.bundle.min.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/vendor/g2/g2.min.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/vendor/wangeditor/index.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/vendor/just-validate.min.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/vendor/gsap/gsap.min.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/js/core.js?v=__STATIC_VER__-b17"></script>
+<script>
+/* 登录页背景视频：强制静音自动循环播放（个别浏览器拦截时兜底重试） */
+(function(){
+  const v=document.getElementById('login-video');
+  if(!v) return;
+  v.muted=true; v.loop=true;
+  const tryPlay=()=>{ const p=v.play(); if(p&&p.catch) p.catch(()=>{}); };
+  v.addEventListener('loadedmetadata',tryPlay);
+  v.addEventListener('canplay',tryPlay);
+  tryPlay();
+  ['click','touchstart','keydown'].forEach(ev=>
+    document.addEventListener(ev,tryPlay,{once:true,capture:true}));
+})();
+</script>
+<script data-cfasync="false" src="/admin/js/upload.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/js/crud.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/js/form.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/js/app.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/js/motion.js?v=__STATIC_VER__-b17"></script>
+</body>
+</html>

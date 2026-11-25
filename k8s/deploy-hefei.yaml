@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pysite-hefei
+  namespace: pysite
+  labels:
+    app: pysite-hefei
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: pysite-hefei
+  template:
+    metadata:
+      labels:
+        app: pysite-hefei
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: web
+          image: docker.io/library/python:3.10-slim
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/local/bin/python", "scripts/serve.py"]
+          workingDir: /app
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: PYTHONPATH
+              value: "/opt/venv/lib/python3.10/site-packages"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYSITE_SITE
+              value: "hefei"
+          ports:
+            - name: http
+              containerPort: 8102
+              hostPort: 8102
+          livenessProbe:
+            tcpSocket:
+              port: 8102
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8102
+            initialDelaySeconds: 8
+            periodSeconds: 15
+          volumeMounts:
+            - name: site
+              mountPath: /app
+            - name: packages
+              mountPath: /opt/venv/lib/python3.10/site-packages
+              readOnly: true
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: site
+          hostPath:
+            path: /www/wwwroot/pysite/hefei
+            type: Directory
+        - name: packages
+          hostPath:
+            path: /www/wwwroot/pysite/venv/lib/python3.10/site-packages
+            type: Directory
+      restartPolicy: Always

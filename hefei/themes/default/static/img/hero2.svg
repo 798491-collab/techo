@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+ <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c92a2a"/><stop offset="1" stop-color="#e8590c"/></linearGradient>
+ <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.02"/></linearGradient>
+ <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0 L0 0 0 60" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/></pattern>
+</defs>
+<rect width="1600" height="900" fill="url(#g)"/>
+<rect width="1600" height="900" fill="url(#grid)"/>
+<circle cx="1300" cy="200" r="320" fill="#ffffff" opacity="0.04"/>
+<circle cx="250" cy="750" r="180" fill="#ffffff" opacity="0.03"/>
+<g transform="translate(0,480)" fill="url(#sky)"><path d="M0,320 L0,250 L40,250 L40,210 L70,210 L70,250 L100,250 L100,180 L130,180 L130,150 L150,150 L150,180 L170,180 L170,120 L200,120 L200,180 L230,180 L230,220 L260,220 L260,160 L300,160 L300,200 L340,200 L340,140 L370,140 L370,100 L390,100 L390,140 L420,140 L420,190 L460,190 L460,230 L500,230 L500,170 L540,170 L540,210 L580,210 L580,150 L620,150 L620,200 L660,200 L660,240 L700,240 L700,190 L740,190 L740,220 L780,220 L780,160 L820,160 L820,210 L860,210 L860,250 L900,250 L900,280 L940,280 L940,230 L980,230 L980,270 L1020,270 L1020,300 L1060,300 L1060,250 L1100,250 L1100,320 Z"/></g>
+<g transform="translate(0,560) scale(1.05)" fill="#ffffff" opacity="0.06"><path d="M0,320 L0,250 L40,250 L40,210 L70,210 L70,250 L100,250 L100,180 L130,180 L130,150 L150,150 L150,180 L170,180 L170,120 L200,120 L200,180 L230,180 L230,220 L260,220 L260,160 L300,160 L300,200 L340,200 L340,140 L370,140 L370,100 L390,100 L390,140 L420,140 L420,190 L460,190 L460,230 L500,230 L500,170 L540,170 L540,210 L580,210 L580,150 L620,150 L620,200 L660,200 L660,240 L700,240 L700,190 L740,190 L740,220 L780,220 L780,160 L820,160 L820,210 L860,210 L860,250 L900,250 L900,280 L940,280 L940,230 L980,230 L980,270 L1020,270 L1020,300 L1060,300 L1060,250 L1100,250 L1100,320 Z"/></g>
+</svg>

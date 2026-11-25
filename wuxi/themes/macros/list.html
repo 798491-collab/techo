@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% import "common.html" as cm %}
+{% block seo %}{{ cm.seo(site, category.name or '资讯中心', category.seo_keywords, category.seo_description) }}{% endblock %}
+{% block content %}
+  {{ cm.breadcrumb(site, [{'name': category.name or '栏目'}]) }}
+  <section class="sec inner-sec">
+    <div class="container">
+      {% block listhead %}<div class="page-head"><h1>{{ category.name }}</h1><p>{{ category.description }}</p></div>{% endblock %}
+      <div class="list-grid">
+        {% for item in items %}{{ cm.content_item(item) }}{% endfor %}
+        {% if not items %}<div class="empty">暂无内容</div>{% endif %}
+      </div>
+      {{ cm.pager(url_category(category.slug), page, pages) }}
+    </div>
+  </section>
+{% endblock %}

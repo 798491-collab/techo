@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "common.html" as cm %}
+{% block seo %}{{ cm.seo(site, item.title, item.seo_keywords, item.seo_description or item.summary) }}{% endblock %}
+{% block content %}
+  {{ cm.breadcrumb(site, [{'name': category.name or '详情', 'url': cm.curl(category.slug, category.model)}, {'name': item.title}]) }}
+  <section class="sec detail-sec">
+    <div class="container detail-layout">
+      <article class="detail-main">
+        <h1 class="detail-title">{{ item.title }}</h1>
+        <div class="detail-meta"><span>{{ item.created_at }}</span><span>来源：{{ item.source or site.short_name }}</span><span>浏览 {{ item.view_count }}</span></div>
+        {% if item.cover %}<div class="detail-cover"><img src="{{item.cover}}" alt="{{item.title}}"></div>{% endif %}
+        {% if item.summary %}<div class="detail-summary">{{item.summary}}</div>{% endif %}
+        <div class="detail-body">{{ body_html|safe }}</div>
+      </article>
+      <aside class="detail-side">
+        {% block detailAside %}{% endblock %}
+        <div class="side-box"><h3>相关推荐</h3><ul class="side-list">
+          {% for r in related %}<li><a href="{{cm.alurl(r)}}">{{r.title}}</a></li>{% endfor %}
+        </ul></div>
+      </aside>
+    </div>
+  </section>
+{% endblock %}

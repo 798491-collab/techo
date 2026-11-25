@@ -1,0 +1,21 @@
+{% extends "_page_index.html" %}
+{% block hero %}
+<section class="hero">
+  <div class="container hero-in">
+    <div class="hero-badge"><i class="fa-solid fa-sparkles"></i> 专业工程咨询 · 值得信赖</div>
+    <h1>{{ site.tagline or '以专业筑根基 · 以诚信赢信赖' }}</h1>
+    <p>{{ site.name }}，专注工程造价咨询、工程管理、商务代办与项目策划一站式服务。</p>
+    <div class="hero-btns"><a href="/service.html" class="btn btn-primary">探索服务 <i class="fa-solid fa-arrow-right"></i></a><a href="/contact.html" class="btn btn-light-2">联系我们</a></div>
+  </div>
+  <div class="hero-blob blob1"></div><div class="hero-blob blob2"></div>
+</section>
+<div class="feat-strip">
+
+</div>
+{% endblock %}
+{% block services %}<div class="sec-head"><span class="sec-en">WHAT WE DO</span><h2>我们的服务</h2><p>全方位工程咨询解决方案</p></div>{% endblock %}
+{% block newshead %}<div class="sec-head"><span class="sec-en">LATEST NEWS</span><h2>最新动态</h2></div>{% endblock %}
+{% block newsaside %}
+<div class="side-box cta-box"><div class="cta-ico"><i class="fa-solid fa-headset"></i></div><h3>需要咨询？</h3><p>专业团队为您解答工程咨询相关问题</p><a href="/contact.html" class="btn btn-primary" style="width:100%;justify-content:center">立即咨询 →</a></div>
+{% endblock %}
+{% block scripts %}{% endblock %}

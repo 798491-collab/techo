@@ -1,0 +1,22 @@
+{% extends "_page_index.html" %}
+{% block hero %}
+<section class="hero">
+  <div class="container hero-in">
+    <div class="hero-deco left"></div>
+    <div class="hero-content">
+      <div class="hero-kicker">— 专注建筑工程领域专业咨询服务 —</div>
+      <h1>{{ site.tagline or '立足徐州 · 服务建筑行业' }}</h1>
+      <p>{{ site.name }}，专注建筑工程技术咨询、施工资质代办与维护、注册人员配备</p>
+      <div class="hero-btns"><a href="/service.html" class="btn btn-red">了解服务 <i class="fa-solid fa-chevron-right"></i></a><a href="/about.html" class="btn btn-outline">走进玖硕</a></div>
+    </div>
+    <div class="hero-deco right"></div>
+  </div>
+</section>
+
+{% endblock %}
+{% block services %}<div class="sec-head"><span class="sec-line"></span><h2>服务领域</h2><p>严谨务实 · 本地化优势 · 高效解决方案</p></div>{% endblock %}
+{% block newshead %}<div class="sec-head"><span class="sec-line"></span><h2>新闻资讯</h2></div>{% endblock %}
+{% block newsaside %}
+<div class="side-box"><h3>联系我们</h3><p style="font-size:14px;line-height:2"><i class="fa-solid fa-phone" style="color:var(--red);margin-right:8px"></i>{{ site.phone or site.mobile }}</p><p style="font-size:14px;line-height:2"><i class="fa-solid fa-location-dot" style="color:var(--red);margin-right:8px"></i>{{ site.address }}</p><a href="/contact.html" class="btn btn-red" style="width:100%;justify-content:center;margin-top:14px">在线咨询</a></div>
+{% endblock %}
+{% block scripts %}{% endblock %}

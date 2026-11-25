@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div data-page-template="page" hidden></div>
+<article class="page-single sec">
+  <div class="container">
+    <h1>{{ category.name or (page_item.title if page_item else '') or site.name }}</h1>
+    {% if body_html %}<div class="page-body">{{ body_html | safe }}</div>{% endif %}
+    {% if category.slug == 'contact' %}
+    <ul class="info-list">
+      <li>{{ site.phone or site.mobile }}</li>
+      <li>{{ site.email }}</li>
+      <li>{{ site.address }}</li>
+    </ul>
+    <p><a href="/contact.html?guest_book=1">在线留言</a></p>
+    {% elif site.stats %}
+    <div class="page-stats">
+      {% for st in site.stats %}<div><b>{{ st.value }}</b><span>{{ st.label }}</span></div>{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</article>
+{% endblock %}

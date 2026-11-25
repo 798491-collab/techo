@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_inner.html" import page_banner, sidebar with context %}
+{% block content %}
+{{ page_banner('联系我们', 'Contact Us') }}
+<div class="vc-wrap vc-inner-layout">
+  {{ sidebar(categories | selectattr('pid','equalto',0) | list, 0) }}
+  <article class="vc-inner-body vc-detail">
+    {% set cards = [] %}
+    {% if site.phone or site.mobile %}{% set _ = cards.append(('bi-telephone-fill','联系电话', site.phone or site.mobile, false)) %}{% endif %}
+    {% if settings.get('wechat_qrcode') %}{% set _ = cards.append(('bi-wechat','微信号', settings.get('wechat_qrcode'), true)) %}{% endif %}
+    {% if settings.get('douyin_qrcode') %}{% set _ = cards.append(('bi-tiktok','抖音号', settings.get('douyin_qrcode'), true)) %}{% endif %}
+    {% if site.address %}{% set _ = cards.append(('bi-geo-alt-fill','联系地址', site.address, false)) %}{% endif %}
+    <div class="vc-contact-cards" data-reveal>
+      {% for icon, title, val, isqr in cards[:3] %}
+      <div class="vc-contact-card{{ ' vc-contact-qr' if isqr or (val is string and val.endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))) else '' }}">
+        <i class="bi {{ icon }}"></i>
+        <h4>{{ title }}</h4>
+        {% if isqr %}
+        <img src="{{ oss(val, 140, 140) }}" alt="{{ title }}二维码" loading="lazy">
+        {% elif val is string and val.endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')) %}
+        <img src="{{ oss(val, 140, 140) }}" alt="{{ title }}二维码" loading="lazy">
+        {% else %}
+        <b>{{ val }}</b>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if body_html %}<div class="vc-detail-body">{{ body_html | safe }}</div>{% endif %}
+    <div class="vc-leave" data-reveal>
+      <h3><i class="bi bi-chat-dots"></i> 在线留言</h3>
+      <p>请留下您的需求与联系方式，我们会第一时间与您取得联系。</p>
+      <div class="vc-leave-acts">
+        <a href="/contact.html?guest_book=1" class="vc-btn vc-btn-solid">我要留言 <i class="bi bi-arrow-right"></i></a>
+      </div>
+    </div>
+  </article>
+</div>
+{% endblock %}

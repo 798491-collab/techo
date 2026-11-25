@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_inner.html" import page_banner, sidebar with context %}
+{% block content %}
+{{ page_banner('搜索结果', 'Search') }}
+<div class="jg-wrap jg-inner-layout">
+  {{ sidebar(categories | selectattr('pid','equalto',0) | list, 0) }}
+  <div class="jg-inner-body">
+    <div class="jg-search-tip" data-reveal>关键词「<b>{{ keyword or '——' }}</b>」共找到 {{ items | length }} 条结果</div>
+    <div class="jg-news-list jg-page-list">
+      {% for it in items %}
+      <a href="{{ url_content(it) }}" data-reveal class="jg-news-row jg-page-row">
+        <div class="jg-page-row-body">
+          <h3>{{ it.title }}</h3>
+          {% if it.summary %}<p>{{ it.summary | truncate(64) }}</p>{% endif %}
+          <time>{{ it.created_at }}</time>
+        </div>
+        <i class="bi bi-chevron-right"></i>
+      </a>
+      {% else %}
+      <div class="jg-empty"><i class="bi bi-inbox"></i><p>未找到相关内容</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

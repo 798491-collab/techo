@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_inner.html" import page_banner, sidebar with context %}
+{% block content %}
+{{ page_banner(category.name or '关于我们', 'About Us') }}
+<div class="zt-wrap zt-inner-layout">
+  {{ sidebar(categories | selectattr('pid','equalto',0) | list, category.id) }}
+  <article data-reveal class="zt-inner-body zt-detail">
+    <div class="zt-detail-body">{{ body_html | safe }}</div>
+
+  </article>
+</div>
+{% endblock %}

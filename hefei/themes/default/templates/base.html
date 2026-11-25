@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+{% block seo %}{% endblock %}
+<link rel="icon" href="{{ settings.get('site_favicon') or ('/theme-assets/favicon.ico?v='~static_ver) }}">
+<link rel="stylesheet" href="/theme-assets/css/style.css">
+<link rel="stylesheet" href="/theme-libs/fontawesome/css/all.min.css?v={{ static_ver }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-in">
+    <a href="/" class="brand"><span class="brand-ico"><i class="fa-solid fa-layer-group"></i></span><span class="brand-txt"><strong>{{ site.short_name }}</strong><small>筑骋咨询 · 筑创未来</small></span></a>
+    <nav class="main-nav">
+      <a href="/" class="{{ 'active' if path=='/' }}">首页</a>
+      {% for c in nav_categories %}
+      <a href="{{ url_category(c.slug) }}" class="{{ 'active' if path == url_category(c.slug) }}">{{ c.name }}</a>
+      {% endfor %}
+    </nav>
+    <a href="/contact.html" class="header-cta"><i class="fa-solid fa-phone"></i> 免费咨询</a>
+  </div>
+</header>
+
+{% block hero %}{% endblock %}
+{% block content %}{% endblock %}
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div class="f-brand"><div class="brand"><span class="brand-ico"><i class="fa-solid fa-layer-group"></i></span><strong>{{ site.short_name }}</strong></div><p>{{ site.description or site.tagline }}</p></div>
+    <div><h5>服务项目</h5>{% for c in nav_categories[:5] %}<a href="{{ url_category(c.slug) }}">{{ c.name }}</a>{% endfor %}</div>
+    <div><h5>联系我们</h5><p><i class="fa-solid fa-phone"></i> {{ site.phone or site.mobile }}</p><p><i class="fa-solid fa-location-dot"></i> {{ site.address }}</p><p><i class="fa-solid fa-envelope"></i> {{ site.email }}</p></div>
+  </div>
+  <div class="footer-bottom container">{{ site.copyright or ('© 2026 '~site.name) }} · <a href="https://beian.miit.gov.cn" rel="nofollow noreferrer" target="_blank">{{ site.icp }}</a>{% if site.gongan_icp %} &nbsp;·&nbsp; <a href="https://beian.mps.gov.cn/" rel="nofollow noreferrer" target="_blank">{{ site.gongan_icp }}</a>{% endif %} &nbsp;·&nbsp; <a href="/sitemap.xml" target="_blank">网站地图</a></div>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

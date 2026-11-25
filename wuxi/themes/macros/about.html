@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% import "common.html" as cm %}
+{% block seo %}{{ cm.seo(site, (category.name or '关于我们'), category.seo_keywords, category.seo_description) }}{% endblock %}
+{% block content %}
+  {% block aboutHero %}{% endblock %}
+  {{ cm.breadcrumb(site, [{'name': '关于我们'}]) }}
+  <section class="sec about-sec">
+    <div class="container about-layout">
+      <aside class="about-side">
+        {% block aboutSide %}{% endblock %}
+        <div class="side-box"><h3>关于我们</h3><ul class="side-list">
+          {% for c in categories %}<li><a href="{{cm.curl(c.slug, c.model)}}" class="{{'cur' if c.slug=='about' else ''}}">{{c.name}}</a></li>{% endfor %}
+        </ul></div>
+      </aside>
+      <article class="about-main">
+        <h1 class="page-title">{{ page_item.title or '关于我们' }}</h1>
+        <div class="about-body">{{ body_html|safe }}</div>
+        {% block aboutExtra %}{% endblock %}
+      </article>
+    </div>
+  </section>
+{% endblock %}

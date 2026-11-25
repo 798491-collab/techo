@@ -1,0 +1,77 @@
+# Python 字节码（venv 内的 .pyc 也忽略）
+__pycache__/
+*.pyc
+*.pyo
+**/.venv/
+
+# 数据库（生产数据，严禁进版本管理）
+*.db
+*.db-shm
+*.db-wal
+
+# 所有日志文件（各站 runtime/logs/ 下同样生效）
+*.log
+
+# storage：唯一运行时数据目录，只入库 seed.json 与目录骨架，其余全忽略
+**/storage/**
+!**/storage/
+!**/storage/seed.json
+!**/storage/**/
+!**/storage/**/.gitkeep
+
+# 旧目录（升级兼容）：只忽略站点根下的旧目录，不能匹配 storage/uploads 这类内部目录
+/*/data/
+/*/uploads/
+/*/runtime/
+
+# 备份与临时
+backups/
+*/backups/
+*.tmp
+*.swp
+
+# 工作台本地数据
+.workbuddy/
+
+# 系统文件
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+
+# 一次性迁移脚本
+_migrate.py
+_smoke*.log
+
+# 一次性迁移脚本
+_server_migrate.sh
+
+# 运行时进程/锁文件（不入库）
+.pid
+.pids.json
+**/.pid
+**/.pids.json
+*.lock
+.deploy.lock
+
+# 本地敏感凭据（签名密钥/后台初始密码），绝不入库
+.secrets.json
+**/.secrets.json
+
+# 散落的静态出口已废弃：统一由应用路由提供，禁止再生成到站点根目录
+sitemap.xml
+**/sitemap.xml
+static_html/
+**/static_html/
+
+# 根目录临时图片/垃圾文件
+/58b817e39498.png
+
+# 密钥
+.env
+
+# 更早的旧目录
+/*/var/

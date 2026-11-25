@@ -1,0 +1,65 @@
+# Gitee push 自动部署接收器
+# 触发地址：http://<服务器IP>:8300/hook?token=<WEBHOOK_TOKEN>
+# 注意：WEBHOOK_TOKEN 真实值只保存在服务器本地，本文件为占位符；
+#       在服务器上填入真实值后再 apply + rollout restart（见 k8s/README.md）
+# 原理：容器内 nsenter 进入宿主机执行 /root/k3s-deploy.sh（复用宿主机 git/kubectl）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-receiver
+  namespace: pysite
+  labels:
+    app: webhook-receiver
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: webhook-receiver
+  template:
+    metadata:
+      labels:
+        app: webhook-receiver
+    spec:
+      hostNetwork: true          # 直接占用宿主机 8300 端口
+      hostPID: true              # nsenter 需要看到宿主机 PID 1
+      nodeName: xiaobu          # 单节点集群，固定调度
+      containers:
+        - name: receiver
+          image: docker.io/library/python:3.10-slim   # 已缓存镜像，免构建
+          command: ["python", "/opt/webhook/webhook-deploy.py"]
+          env:
+            - name: WEBHOOK_TOKEN
+              value: "<WEBHOOK_TOKEN>"   # 占位符：真实 token 只存服务器本地，不入 Git
+          securityContext:
+            privileged: true           # nsenter 进宿主机必需
+          ports:
+            - containerPort: 8300
+              hostPort: 8300
+          resources:
+            requests:
+              memory: "16Mi"
+            limits:
+              memory: "64Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8300
+            initialDelaySeconds: 3
+            periodSeconds: 30
+          volumeMounts:
+            - name: receiver-src
+              mountPath: /opt/webhook
+              readOnly: true
+            - name: deploy-logs
+              mountPath: /www/wwwroot/pysite/scripts
+      volumes:
+        - name: receiver-src
+          hostPath:
+            path: /www/wwwroot/pysite/k8s       # 挂仓库 k8s 目录（脚本随 Git 发版）
+            type: Directory
+        - name: deploy-logs
+          hostPath:
+            path: /www/wwwroot/pysite/scripts   # 部署/webhook 日志目录（读写）
+            type: Directory

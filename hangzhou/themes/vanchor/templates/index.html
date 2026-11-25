@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block hero %}
+{# ===== 首屏（左文右图，banner 多图轮播：副标题/图片已对接 banner 内容） ===== #}
+<section class="vc-hero vc-hero-banner vc-hero-imgbg" id="vcHero">
+  {% set slides = banners if banners else site.slides %}
+  {% for s in slides %}
+  <div class="vc-hero-slide {{ 'on' if loop.first }}" data-slide="{{ loop.index }}">
+    <div class="vc-hero-slide-bg" {% if s.image %}style="background-image:url('{{ oss(s.image, 1920, 520) }}')"{% endif %}></div>
+    <div class="vc-wrap">
+      <div class="vc-hero-txt">
+        {% if s.subtitle %}<p class="vc-hero-en">{{ s.subtitle }}</p>{% endif %}
+        <h1>{{ s.title }}</h1>
+        <div class="vc-hero-acts">
+          <a href="/about.html" class="vc-btn vc-btn-solid">了解详情 <i class="bi bi-arrow-right"></i></a>
+          <a href="/contact.html" class="vc-btn vc-btn-line">立即咨询</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  <button class="vc-hero-arrow vc-prev" id="vcPrev" aria-label="上一张"><i class="bi bi-chevron-left"></i></button>
+  <button class="vc-hero-arrow vc-next" id="vcNext" aria-label="下一张"><i class="bi bi-chevron-right"></i></button>
+  <div class="vc-hero-dots">
+    {% for s in slides %}<button data-go="{{ loop.index }}" class="{{ 'on' if loop.first }}" aria-label="第{{ loop.index }}张"></button>{% endfor %}
+  </div>
+  <div class="vc-hero-scroll"><i class="bi bi-mouse"></i><span>向下滚动</span></div>
+</section>
+{% endblock %}
+{% block content %}
+{# ===== 公司简介（认证列表） ===== #}
+<section class="vc-section" data-reveal>
+  <div class="vc-wrap vc-intro-grid">
+    <div>
+      <div class="vc-sec-tag">About Us</div>
+      <h2 class="vc-sec-title">公司简介</h2>
+      <p class="vc-intro-p">{{ site.description or site.tagline }}</p>
+      <p class="vc-intro-p">{{ site.name }}拥有专业的申报团队与丰富的行业资源，为建筑企业提供资质申报、变更、延期、升级、人才服务等全方位支持，以标准化流程保障每一次合作高效落地。</p>
+      <a href="/about.html" class="vc-more">了解详情 <i class="bi bi-arrow-right"></i></a>
+    </div>
+    {% if about_page and about_page.cover %}<div class="vc-intro-img"><img src="{{ oss(about_page.cover, 522, 380) }}" alt="{{ about_page.title | default('关于我们') }}"></div>{% endif %}
+
+  </div>
+</section>
+
+{# ===== 服务项目（product 模型内容驱动，数量由模板截取） ===== #}
+<section class="vc-section vc-bg" data-reveal>
+  <div class="vc-wrap">
+    <div class="vc-sec-head">
+      <div class="vc-sec-tag">Our Services</div>
+      <h2 class="vc-sec-title">服务项目</h2>
+    </div>
+    {% set svc = product_items if product_items else [] %}
+    <div class="vc-prod-grid">
+      {% for t in svc[:8] %}
+      <a href="{{ url_content(t) }}" class="vc-prod-card">
+        <div class="vc-prod-cover"><img src="{{ oss(t.cover, 284, 160) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
+        <div class="vc-prod-body">
+          <h3>{{ t.title | truncate(20) }}</h3>
+          <p>{{ t.summary | default('专业、高效、可靠的一站式服务方案。') | truncate(36) }}</p>
+          <span>查看详情 <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+
+{# ===== 精选案例（3 个，参考智造橙案例卡片样式） ===== #}
+<section class="vc-section" data-reveal>
+  <div class="vc-wrap">
+    <div class="vc-sec-head vc-sec-head-row">
+      <div>
+        <div class="vc-sec-tag">Cases</div>
+        <h2 class="vc-sec-title">精选案例</h2>
+      </div>
+      <a href="/case.html" class="vc-more">更多案例 <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="vc-case-grid">
+      {% for t in case_items[:3] %}
+      <a href="{{ url_content(t) }}" class="vc-case-card">
+        <div class="vc-case-cover"><img src="{{ oss(t.cover, 384, 200) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
+        <div class="vc-case-body"><h3>{{ t.title | truncate(24) }}</h3><span>查看详情 <i class="bi bi-arrow-right"></i></span></div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ===== 新闻动态 ===== #}
+<section class="vc-section vc-bg" data-reveal>
+  <div class="vc-wrap">
+    <div class="vc-sec-head vc-sec-head-row">
+      <div>
+        <div class="vc-sec-tag">Latest News</div>
+        <h2 class="vc-sec-title">最新资讯</h2>
+      </div>
+      <a href="/news.html" class="vc-more">全部新闻 <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="vc-news-wrap">
+      {% if news_items %}
+      <a href="{{ url_content(news_items[0]) }}" class="vc-news-lead">
+        <div class="vc-news-lead-cover"><img src="{{ oss(news_items[0].cover, 638, 220) or '/theme-assets/img/ph-news1.svg' }}" alt="{{ news_items[0].title }}" loading="lazy"></div>
+        <div class="vc-news-lead-body">
+          <time>{{ news_items[0].created_at }}</time>
+          <h3>{{ news_items[0].title }}</h3>
+          {% if news_items[0].summary %}<p>{{ news_items[0].summary | truncate(70) }}</p>{% endif %}
+          <span>了解详情 <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </a>
+      {% endif %}
+      <div class="vc-news-list">
+        {% for h in news_items[1:5] %}
+        <a href="{{ url_content(h) }}" class="vc-news-row">
+          <span class="vc-news-date"><b>{{ h.created_at[8:10] }}</b><em>{{ h.created_at[:7] }}</em></span>
+          <div class="vc-news-row-body"><h3>{{ h.title | truncate(30) }}</h3>{% if h.summary %}<p>{{ h.summary | truncate(56) }}</p>{% endif %}</div>
+          <i class="bi bi-chevron-right"></i>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

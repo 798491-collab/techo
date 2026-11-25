@@ -1,0 +1,43 @@
+{# 公共 Jinja2 组件宏：五套主题按需 import，避免重复代码 #}
+
+{% macro seo(site, title='', keywords='', description='') %}
+  <title>{{ title or site.name }} - {{ site.short_name }}</title>
+  <meta name="keywords" content="{{ keywords or site.keywords or site.name }}">
+  <meta name="description" content="{{ description or site.description or site.tagline }}">
+{% endmacro %}
+
+{# 栏目/内容链接规则，五套主题统一复用 #}
+{% macro curl(slug, model='') %}{{ url_category(slug) }}{% endmacro %}
+
+{% macro alurl(item) -%}{{ url_content(item) }}{% endmacro %}
+
+{% macro breadcrumb(site, items) %}
+  <nav class="crumbs" aria-label="breadcrumb">
+    <a href="/">首页</a>{% for it in items %}<span class="sep">/</span>{% if it.url %}<a href="{{ it.url }}">{{ it.name }}</a>{% else %}<span>{{ it.name }}</span>{% endif %}{% endfor %}
+  </nav>
+{% endmacro %}
+
+{% macro pager(base, page, pages) %}
+  {% if pages > 1 %}
+  <div class="pager">
+    {% if page > 1 %}<a href="{{base}}?page={{page-1}}">上一页</a>{% endif %}
+    {% for i in range(1, pages+1) %}<a href="{{base}}?page={{i}}" class="{{'active' if i==page else ''}}">{{i}}</a>{% endfor %}
+    {% if page < pages %}<a href="{{base}}?page={{page+1}}">下一页</a>{% endif %}
+  </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro content_item(item, variant='') %}
+  <article class="content-item {{variant}}">
+    {% if item.cover %}<div class="ci-cover"><a href="{{ url_content(item) }}"><img src="{{ oss(item.cover, 387, 180) }}" alt="{{item.title}}"></a></div>{% endif %}
+    <div class="ci-body">
+      <h3 class="ci-title"><a href="{{ url_content(item) }}">{{item.title}}</a></h3>
+      {% if item.summary %}<p class="ci-summary">{{item.summary}}</p>{% endif %}
+      <div class="ci-meta"><span>{{item.created_at}}</span>{% if item.view_count %}<span>浏览 {{item.view_count}}</span>{% endif %}</div>
+    </div>
+  </article>
+{% endmacro %}
+
+{% macro contact_strip(site) %}
+  <div class="contact-strip"><span>{{site.phone or site.mobile}}</span><span>{{site.address}}</span></div>
+{% endmacro %}

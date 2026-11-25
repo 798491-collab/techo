@@ -1,0 +1,370 @@
+{
+  "admin": {
+    "username": "admin",
+    "password": "${PYSITE_ADMIN_PASSWORD}",
+    "nickname": "无锡站管理员"
+  },
+  "settings": {
+    "site_name": "无锡君鑫建筑工程咨询有限公司",
+    "site_phone": "17710727587",
+    "site_mobile": "17710727587",
+    "site_email": "service@wx-junxin.com",
+    "site_address": "江苏省无锡市梁溪区清扬路118号世金中心2804",
+    "site_keywords": "无锡建筑资质咨询,造价咨询,安许办理",
+    "site_description": "无锡君鑫建筑工程咨询有限公司，专注建筑行业一站式工程咨询服务。",
+    "site_copyright": "© 2026 无锡君鑫建筑工程咨询有限公司 版权所有",
+    "site_short_name": "君鑫咨询",
+    "site_tagline": "君承诚信 · 鑫筑共赢",
+    "site_city": "无锡",
+    "site_industry": "建筑工程咨询",
+    "icp_no": "苏ICP备00000000号",
+    "police_no": "苏公网安备 32020002000000号"
+  },
+  "tags": [
+    {
+      "name": "建筑资质",
+      "sort": 1
+    },
+    {
+      "name": "造价咨询",
+      "sort": 2
+    },
+    {
+      "name": "安许办理",
+      "sort": 3
+    },
+    {
+      "name": "人才证书",
+      "sort": 4
+    }
+  ],
+  "categories": [
+    {
+      "name": "关于君鑫",
+      "slug": "about",
+      "model": "page",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 1,
+      "status": 1,
+      "description": "关于君鑫 - 专业服务与资讯",
+      "seo_title": "关于君鑫",
+      "seo_keywords": "",
+      "seo_description": ""
+    },
+    {
+      "name": "服务项目",
+      "slug": "service",
+      "model": "product",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 2,
+      "status": 1,
+      "description": "服务项目 - 专业服务与资讯",
+      "seo_title": "服务项目",
+      "seo_keywords": "",
+      "seo_description": ""
+    },
+    {
+      "name": "工程案例",
+      "slug": "case",
+      "model": "case",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 3,
+      "status": 1,
+      "description": "工程案例 - 专业服务与资讯",
+      "seo_title": "工程案例",
+      "seo_keywords": "",
+      "seo_description": ""
+    },
+    {
+      "name": "新闻中心",
+      "slug": "news",
+      "model": "article",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 4,
+      "status": 1,
+      "description": "新闻中心 - 专业服务与资讯",
+      "seo_title": "新闻中心",
+      "seo_keywords": "",
+      "seo_description": ""
+    },
+    {
+      "name": "联系我们",
+      "slug": "contact",
+      "model": "page",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 5,
+      "status": 1,
+      "description": "联系我们 - 专业服务与资讯",
+      "seo_title": "联系我们",
+      "seo_keywords": "",
+      "seo_description": ""
+    }
+  ],
+  "forms": [
+    {
+      "name": "在线咨询",
+      "code": "consult",
+      "fields": [
+        {
+          "label": "姓名",
+          "name": "name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "label": "电话",
+          "name": "phone",
+          "type": "text",
+          "required": true
+        },
+        {
+          "label": "咨询内容",
+          "name": "content",
+          "type": "textarea",
+          "required": true
+        }
+      ],
+      "notify_email": "",
+      "status": 1
+    }
+  ],
+  "contents": [
+    {
+      "category_slug": "about",
+      "model": "page",
+      "title": "关于君鑫",
+      "subtitle": "",
+      "summary": "无锡君鑫建筑工程咨询有限公司坐落于无锡市梁溪区，专注建筑行业一站式工程咨询服务。",
+      "body": "<h2>关于君鑫</h2><p>无锡君鑫建筑工程咨询有限公司坐落于无锡市梁溪区，是专注于建筑行业一站式工程咨询服务企业，现有员工50人，汇聚工程管理、造价、建筑技术、资质服务等专业人才，团队实战经验丰富，服务覆盖江苏及全国多地建筑市场。</p><p>公司深耕建筑工程咨询领域，围绕建筑企业发展需求，提供建筑资质咨询、工程项目技术咨询、造价咨询、工程资料辅导、人才证书配套咨询、安许办理咨询等专业服务，业务涵盖房建、市政、装饰、路桥等多个工程类别。</p><p>自成立以来，公司坚守\"君承诚信，鑫筑共赢\"的经营理念，以专业、高效、合规为服务准则，建立标准化服务流程，重视风险把控，为建筑企业解决资质申报、人员配置、项目咨询等各类难题。</p><p><strong>地址：</strong>江苏省无锡市梁溪区清扬路118号世金中心2804<br><strong>联系人：</strong>杜总 17710727587</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 1,
+      "is_hot": 0,
+      "seo_title": "关于君鑫",
+      "seo_keywords": "",
+      "seo_description": "无锡君鑫建筑工程咨询有限公司坐落于无锡市梁溪区，专注建筑行业一站式工程咨询服务。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "service",
+      "model": "product",
+      "title": "建筑资质咨询服务",
+      "subtitle": "",
+      "summary": "提供建筑资质申报、升级、变更与维护全流程咨询。",
+      "body": "<h2>建筑资质咨询</h2><p>为建筑企业提供资质申报、升级、变更、延续等全流程咨询服务，熟悉审批政策与申报要求，助力企业合规高效地取得与维护资质。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "建筑资质",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 1,
+      "seo_title": "建筑资质咨询服务",
+      "seo_keywords": "",
+      "seo_description": "提供建筑资质申报、升级、变更与维护全流程咨询。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "service",
+      "model": "product",
+      "title": "工程造价咨询服务",
+      "subtitle": "",
+      "summary": "提供预算编制、结算审核、全过程造价控制等专业服务。",
+      "body": "<h2>工程造价咨询</h2><p>拥有专业造价团队，提供投资估算、预算编制、结算审核、全过程造价控制等服务，覆盖房建、市政、装饰、路桥等多个工程类别。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "造价咨询",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "工程造价咨询服务",
+      "seo_keywords": "",
+      "seo_description": "提供预算编制、结算审核、全过程造价控制等专业服务。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "service",
+      "model": "product",
+      "title": "工程项目技术咨询",
+      "subtitle": "",
+      "summary": "为建筑企业提供项目技术分析与方案论证服务。",
+      "body": "<h2>工程项目技术咨询</h2><p>依托资深技术团队，为工程项目提供技术咨询、方案论证、规范解读等服务，助力项目顺利推进。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "技术咨询",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "工程项目技术咨询",
+      "seo_keywords": "",
+      "seo_description": "为建筑企业提供项目技术分析与方案论证服务。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "service",
+      "model": "product",
+      "title": "安许办理与人才证书配套",
+      "subtitle": "",
+      "summary": "安全生产许可证办理咨询与人才证书备案配套服务。",
+      "body": "<h2>安许办理与人才证书</h2><p>提供安全生产许可证办理咨询、人才证书配套咨询、工程资料辅导等服务，为企业解决人员配置与证书办理难题。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "安许办理,人才证书",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "安许办理与人才证书配套",
+      "seo_keywords": "",
+      "seo_description": "安全生产许可证办理咨询与人才证书备案配套服务。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "news",
+      "model": "article",
+      "title": "建筑企业资质申报的流程与要点",
+      "subtitle": "",
+      "summary": "梳理建筑企业资质申报的关键流程与注意事项。",
+      "body": "<h2>资质申报要点</h2><p>资质申报涉及材料准备、人员配置、审批流程等多个环节。我们梳理关键流程与注意事项，帮助企业少走弯路。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "建筑资质",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "建筑企业资质申报的流程与要点",
+      "seo_keywords": "",
+      "seo_description": "梳理建筑企业资质申报的关键流程与注意事项。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "news",
+      "model": "article",
+      "title": "工程造价控制的常见误区",
+      "subtitle": "",
+      "summary": "分析工程造价控制中常见的问题与应对策略。",
+      "body": "<h2>造价控制误区</h2><p>工程造价控制贯穿项目全过程，本文分析常见误区并提供应对策略。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "造价咨询",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "工程造价控制的常见误区",
+      "seo_keywords": "",
+      "seo_description": "分析工程造价控制中常见的问题与应对策略。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "case",
+      "model": "case",
+      "title": "房建工程咨询服务案例",
+      "subtitle": "",
+      "summary": "为房建工程企业提供资质、造价、技术一站式咨询服务。",
+      "body": "<h2>房建工程服务案例</h2><p>我们为多家房建工程企业提供资质咨询、造价咨询与技术支持，助力企业高效推进项目。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "房建",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "房建工程咨询服务案例",
+      "seo_keywords": "",
+      "seo_description": "为房建工程企业提供资质、造价、技术一站式咨询服务。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "contact",
+      "model": "page",
+      "title": "联系我们",
+      "subtitle": "",
+      "summary": "欢迎来电咨询，君承诚信，鑫筑共赢。",
+      "body": "<h2>联系我们</h2><p><strong>地址：</strong>江苏省无锡市梁溪区清扬路118号世金中心2804</p><p><strong>联系人：</strong>杜总 17710727587</p><p><strong>邮箱：</strong>service@wx-junxin.com</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "联系我们",
+      "seo_keywords": "",
+      "seo_description": "欢迎来电咨询，君承诚信，鑫筑共赢。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "title": "君承诚信 · 鑫筑共赢",
+      "summary": "建筑行业一站式工程咨询服务",
+      "cover": "",
+      "model": "banner",
+      "status": "publish",
+      "extra": "{\"sub_title\": \"建筑行业一站式工程咨询服务\"}"
+    },
+    {
+      "title": "专业 · 高效 · 合规",
+      "summary": "为建筑企业解决资质申报、人员配置、项目咨询难题",
+      "cover": "",
+      "model": "banner",
+      "status": "publish",
+      "extra": "{\"sub_title\": \"为建筑企业解决资质申报、人员配置、项目咨询难题\"}"
+    },
+    {
+      "title": "覆盖江苏 服务全国",
+      "summary": "房建 · 市政 · 装饰 · 路桥 多专业领域",
+      "cover": "",
+      "model": "banner",
+      "status": "publish",
+      "extra": "{\"sub_title\": \"房建 · 市政 · 装饰 · 路桥 多专业领域\"}"
+    },
+    {
+      "title": "50",
+      "summary": "专业员工",
+      "model": "stat",
+      "status": "publish",
+      "sort": 1
+    },
+    {
+      "title": "江苏",
+      "summary": "服务区域",
+      "model": "stat",
+      "status": "publish",
+      "sort": 2
+    },
+    {
+      "title": "4+",
+      "summary": "工程类别",
+      "model": "stat",
+      "status": "publish",
+      "sort": 3
+    },
+    {
+      "title": "一站式",
+      "summary": "咨询服务",
+      "model": "stat",
+      "status": "publish",
+      "sort": 4
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{# szjg 主题内页公共组件 #}
+
+{% macro page_banner(title, en='') %}
+<section class="jg-page-banner" data-reveal>
+  <div class="jg-wrap">
+    <h1>{{ title }}</h1>
+    <p>{{ en or site.industry | default('专业服务') }}</p>
+    <nav class="jg-crumbs">
+      <a href="/">首页</a><i class="bi bi-chevron-right"></i><span>{{ title }}</span>
+    </nav>
+  </div>
+</section>
+{% endmacro %}
+
+{% macro sidebar(categories, current_id, title='栏目导航') %}
+<aside class="jg-side">
+  <div class="jg-side-box">
+    <h3>{{ title }}</h3>
+    {% for c in categories %}
+    <a href="{{ url_category(c.slug) }}" class="{{ 'on' if c.id==current_id }}">{{ c.name }}<i class="bi bi-chevron-right"></i></a>
+    {% endfor %}
+  </div>
+  <div class="jg-side-contact">
+    <h4>咨询热线</h4>
+    <b>{{ site.phone or site.mobile }}</b>
+    {% if settings.get('wechat_qrcode') %}
+    <div class="jg-side-qr"><img src="{{ oss(settings.get('wechat_qrcode'), 150, 150) }}" alt="微信二维码" loading="lazy"></div><span class="jg-side-qr-cap">微信扫码咨询</span>
+    {% endif %}
+  </div>
+</aside>
+{% endmacro %}
+
+{% macro pager_nav(base, page, pages) %}
+{% if pages > 1 %}
+<div class="jg-pager">
+  {% if page > 1 %}<a href="{{ base }}?page={{ page-1 }}"><i class="bi bi-chevron-left"></i> 上一页</a>{% endif %}
+  {% for i in range(1, pages+1) %}<a href="{{ base }}?page={{ i }}" class="{{ 'on' if i==page }}">{{ i }}</a>{% endfor %}
+  {% if page < pages %}<a href="{{ base }}?page={{ page+1 }}">下一页 <i class="bi bi-chevron-right"></i></a>{% endif %}
+</div>
+{% endif %}
+{% endmacro %}

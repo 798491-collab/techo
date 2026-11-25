@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% import "common.html" as cm %}
+{% block seo %}{{ cm.seo(site, site.name) }}{% endblock %}
+{% block content %}
+  {% block hero %}{% endblock %}
+  {# 服务/产品板块：栏目中 model=product 的项 #}
+  {% set svc_cats = [] %}
+  {% for c in categories if c.model == 'product' %}{% set _ = svc_cats.append(c) %}{% endfor %}
+  {% if svc_cats %}
+  <section class="sec services-sec">
+    <div class="container">
+      {% block services %}{% endblock %}
+      <div class="svc-grid">
+        {% for c in svc_cats %}
+        <a class="svc-card" href="{{ cm.curl(c.slug, c.model) }}">
+          <span class="svc-num">0{{ loop.index }}</span>
+          <span class="svc-icon"><i class="fa-solid fa-gears"></i></span>
+          <h3>{{ c.name }}</h3>
+          <p>{{ c.description or site.tagline }}</p>
+          <span class="svc-more">了解详情 →</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {# 推荐内容 #}
+  {% if top_contents %}
+  {% block featured %}{% endblock %}
+  <section class="sec featured-sec">
+    <div class="container">
+      <div class="sec-head"><h2>重点推荐</h2><span class="sec-en">FEATURED</span></div>
+      <div class="featured-grid">
+        {% for item in top_contents[:6] %}
+        <a class="featured-card" href="{{ cm.alurl(item) }}">
+          {% if item.cover %}<div class="fc-cover"><img src="{{ oss(item.cover, 387, 190) }}" alt="{{item.title}}"></div>{% endif %}
+          <div class="fc-body"><h3>{{item.title}}</h3><p>{{item.summary}}</p><time>{{item.created_at}}</time></div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {# 新闻资讯 #}
+  {% set news_cats = [] %}
+  {% for c in categories if c.model == 'article' %}{% set _ = news_cats.append(c) %}{% endfor %}
+  {% if hot_contents or news_cats %}
+  <section class="sec news-sec">
+    <div class="container">
+      {% block newshead %}{% endblock %}
+      <div class="news-layout">
+        <div class="news-list">
+          {% for item in (hot_contents or [])[:6] %}
+          <a class="news-item" href="{{ cm.alurl(item) }}">
+            <span class="news-date">{{item.created_at}}</span>
+            <span class="news-title">{{item.title}}</span>
+            <span class="news-arrow">→</span>
+          </a>
+          {% endfor %}
+          {% if not hot_contents %}<p class="muted">暂无资讯</p>{% endif %}
+        </div>
+        {% block newsaside %}{% endblock %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+{% endblock %}

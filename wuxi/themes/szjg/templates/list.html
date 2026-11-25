@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_inner.html" import page_banner, sidebar, pager_nav with context %}
+{% block content %}
+{% set sibs = categories | selectattr('pid','equalto',category.id) | list %}
+{% if not sibs %}{% set sibs = categories | selectattr('pid','equalto',category.pid) | list %}{% endif %}
+{% if not sibs %}{% set sibs = categories | selectattr('pid','equalto',0) | list %}{% endif %}
+{{ page_banner(category.name) }}
+<div class="jg-wrap jg-inner-layout">
+  {{ sidebar(sibs, category.id, category.name) }}
+  <div class="jg-inner-body">
+    {% set list_model = category.model or (items[0].model if items else '') %}
+    {% if list_model in ('product', 'case') %}
+    {# 服务项目 / 案例：一行三个卡片（参考化贸蓝，建工深红配色） #}
+    <div class="jg-page-grid">
+      {% for it in items %}
+      <a href="{{ url_content(it) }}" class="jg-page-card">
+        <div class="jg-page-card-cover"><img src="{{ oss(it.cover, 282, 180) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ it.title }}" loading="lazy"></div>
+        <div class="jg-page-card-body">
+          <h3>{{ it.title | truncate(26) }}</h3>
+          {% if it.summary %}<p>{{ it.summary | truncate(44) }}</p>{% endif %}
+          <div class="jg-item-meta"><time>{{ it.created_at }}</time><span>查看详情 <i class="bi bi-arrow-right"></i></span></div>
+        </div>
+      </a>
+      {% else %}
+      <div class="jg-empty"><i class="bi bi-inbox"></i><p>暂无内容</p></div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="jg-news-list jg-page-list">
+      {% for it in items %}
+      <a href="{{ url_content(it) }}" data-reveal class="jg-news-row jg-page-row">
+        <div class="jg-page-cover"><img src="{{ oss(it.cover, 150, 96) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ it.title }}" loading="lazy"></div>
+        <div class="jg-page-row-body">
+          <h3>{{ it.title | truncate(30) }}</h3>
+          {% if it.summary %}<p>{{ it.summary | truncate(56) }}</p>{% endif %}
+          <time>{{ it.created_at }}</time>
+        </div>
+        <i class="bi bi-chevron-right"></i>
+      </a>
+      {% else %}
+      <div class="jg-empty"><i class="bi bi-inbox"></i><p>暂无内容</p></div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {{ pager_nav(url_category(category.slug), page, pages) }}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_inner.html" import page_banner, sidebar with context %}
+{% block content %}
+{{ page_banner(item.title, category.name | default('')) }}
+<div class="sg-wrap sg-inner-layout">
+  {{ sidebar(categories | selectattr('pid','equalto',0) | list, category.id, '栏目导航') }}
+  <article data-reveal class="sg-inner-body sg-detail">
+    <h1 class="sg-detail-title">{{ item.title }}</h1>
+    <div class="sg-detail-meta">
+      <span><i class="bi bi-calendar3"></i> {{ item.created_at }}</span>
+      <span><i class="bi bi-eye"></i> <span data-view-count="{{ item.id }}">0</span> 次浏览</span>
+      {% if item.author %}<span><i class="bi bi-person"></i> {{ item.author }}</span>{% endif %}
+      <span class="sg-detail-cat"><i class="bi bi-folder"></i> {{ category.name or '新闻' }}</span>
+    </div>
+    <div class="sg-detail-body">{{ body_html | safe }}</div>
+    {% if related %}
+    <div class="sg-detail-related">
+      <h3><i class="bi bi-link-45deg"></i> 相关推荐</h3>
+      <div class="sg-detail-rel-grid">
+        {% for r in related %}
+        <a href="{{ url_content(r) }}"><b>{{ r.title | truncate(28) }}</b><time>{{ r.created_at }}</time></a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <div class="sg-detail-navs">
+      <a href="javascript:history.back()"><i class="bi bi-arrow-left"></i> 返回列表</a>
+      <a href="/contact.html">在线咨询 <i class="bi bi-arrow-right"></i></a>
+    </div>
+  </article>
+</div>
+{% endblock %}

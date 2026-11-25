@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{# 在线留言表单填写页：URL 带 ?guest_book 参数时渲染，ajax 提交 /api/frontend/form/guest_book #}
+{% block title %}{{ gb_form.name or '在线留言' }} - {{ site.name }}{% endblock %}
+{% block head %}
+<style>
+/* 在线留言页（通用样式，适配各主题） */
+.gb-page { padding: 60px 0 80px; background: var(--gb-bg, #f7f8fa); min-height: 50vh }
+.gb-wrap { max-width: 760px; margin: 0 auto; padding: 0 16px }
+.gb-head { text-align: center; margin-bottom: 32px }
+.gb-head h1 { font-size: 28px; margin: 0 0 10px }
+.gb-head h1 i { margin-right: 8px }
+.gb-head p { color: #888; margin: 0; font-size: 14px }
+.gb-form { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,.06);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 18px }
+.gb-field.gb-full, .gb-actions { grid-column: 1 / -1 }
+.gb-label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #333 }
+.gb-req { color: #e64340; margin-left: 4px; font-style: normal }
+.gb-input { width: 100%; box-sizing: border-box; border: 1px solid #dcdfe6; border-radius: 8px;
+  padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; background: #fff; color: #333 }
+.gb-input:focus { border-color: var(--gb-accent, #2b5be2) }
+.gb-check-group { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 0 }
+.gb-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; color: #333 }
+.gb-muted { color: #bbb; font-size: 13px }
+.gb-err { color: #e64340; font-size: 12px; margin-top: 4px; min-height: 0 }
+.gb-empty { background: #fff; border-radius: 12px; padding: 60px; text-align: center; color: #999;
+  box-shadow: 0 4px 24px rgba(0,0,0,.06); font-size: 15px }
+.gb-empty i { font-size: 40px; display: block; margin-bottom: 12px; opacity: .5 }
+.gb-actions { display: flex; align-items: center; gap: 16px; margin-top: 8px }
+.gb-submit { border: 0; cursor: pointer; color: #fff; font-size: 15px; padding: 12px 44px; border-radius: 8px;
+  background: var(--gb-accent, #2b5be2); transition: opacity .2s; display: inline-flex; align-items: center; gap: 8px }
+.gb-submit:hover { opacity: .88 }
+.gb-submit:disabled { opacity: .6; cursor: not-allowed }
+.gb-tip { font-size: 14px }
+.gb-tip.ok { color: #52c41a }
+.gb-tip.err { color: #e64340 }
+.spin { display: inline-block; animation: gb-spin 1s linear infinite }
+@keyframes gb-spin { to { transform: rotate(360deg) } }
+@media (max-width: 640px) { .gb-form { grid-template-columns: 1fr; padding: 20px } }
+</style>
+{% endblock %}
+{% block content %}
+<section class="gb-page" data-reveal>
+  <div class="gb-wrap">
+    <div class="gb-head" data-reveal>
+      <h1><i class="bi bi-chat-dots"></i> {{ gb_form.name or '在线留言' }}</h1>
+      <p>请留下您的需求与联系方式，我们会第一时间与您取得联系。</p>
+    </div>
+    {% if not gb_form or not gb_form.fields %}
+    <div class="gb-empty"><i class="bi bi-inbox"></i> 表单不存在或已关闭，请联系网站管理员。</div>
+    {% else %}
+    <form class="gb-form" id="gbForm" data-reveal data-reveal novalidate>
+      {% for f in gb_form.fields %}
+      {% set fkey = f.field or f.name or f.key %}
+      {% set ftype = f.type or 'text' %}
+      {% set fopts = f.options or [] %}
+      <div class="gb-field {{ 'gb-full' if ftype in ('textarea',) }}" data-fkey="{{ fkey }}" data-ftype="{{ ftype }}" data-required="{{ f.required or 0 }}">
+        <label class="gb-label">{{ f.label }}{% if f.required %}<i class="gb-req">*</i>{% endif %}</label>
+        {% if ftype == 'textarea' %}
+        <textarea class="gb-input" rows="5" name="{{ fkey }}" placeholder="请输入{{ f.label }}">{{ f.default or '' }}</textarea>
+        {% elif ftype == 'radio' %}
+        <div class="gb-check-group">
+          {% for o in fopts %}
+          <label class="gb-check"><input type="radio" name="{{ fkey }}" value="{{ o.value }}" {{ 'checked' if (f.default or '') == o.value }}> {{ o.label }}</label>
+          {% endfor %}
+          {% if not fopts %}<span class="gb-muted">未配置选项</span>{% endif %}
+        </div>
+        {% elif ftype == 'checkbox' %}
+        <div class="gb-check-group">
+          {% for o in fopts %}
+          <label class="gb-check"><input type="checkbox" name="{{ fkey }}" value="{{ o.value }}"> {{ o.label }}</label>
+          {% endfor %}
+        </div>
+        {% elif ftype == 'select' %}
+        <select class="gb-input" name="{{ fkey }}">
+          <option value="">请选择{{ f.label }}</option>
+          {% for o in fopts %}<option value="{{ o.value }}" {{ 'selected' if (f.default or '') == o.value }}>{{ o.label }}</option>{% endfor %}
+        </select>
+        {% elif ftype == 'switch' %}
+        <div class="gb-check-group">
+          <label class="gb-check"><input type="checkbox" name="{{ fkey }}" data-switch="1" value="1" {{ 'checked' if f.default in ('1', 1, true) }}> {{ f.label }}</label>
+        </div>
+        {% elif ftype == 'number' %}
+        <input class="gb-input" type="number" name="{{ fkey }}" value="{{ f.default or '' }}" placeholder="请输入{{ f.label }}">
+        {% elif ftype == 'date' %}
+        <input class="gb-input" type="date" name="{{ fkey }}" value="{{ f.default or '' }}">
+        {% else %}
+        <input class="gb-input" type="{{ 'email' if ftype == 'email' else 'text' }}" name="{{ fkey }}" value="{{ f.default or '' }}" placeholder="请输入{{ f.label }}">
+        {% endif %}
+        <div class="gb-err"></div>
+      </div>
+      {% endfor %}
+      <div class="gb-actions">
+        <button type="submit" class="gb-submit" id="gbSubmit"><i class="bi bi-send"></i> 提交留言</button>
+        <span class="gb-tip" id="gbTip"></span>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+/* 在线留言：客户端必填校验 + ajax 提交 */
+(function(){
+  const form=document.getElementById('gbForm');
+  if(!form) return;
+  const tip=document.getElementById('gbTip');
+  const btn=document.getElementById('gbSubmit');
+  const submitBtn=btn.innerHTML;
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    tip.textContent=''; tip.className='gb-tip';
+    /* 校验 */
+    let firstBad=null;
+    const data={};
+    form.querySelectorAll('.gb-field').forEach(fd=>{
+      const key=fd.dataset.fkey, type=fd.dataset.type, req=fd.dataset.required==='1';
+      const err=fd.querySelector('.gb-err');
+      err.textContent='';
+      let val='';
+      if(type==='checkbox'){
+        const checked=[...fd.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);
+        val=checked.join(',');
+      }else if(type==='switch'){
+        const cb=fd.querySelector('input[type=checkbox]');
+        val=cb&&cb.checked?'1':'0';
+      }else if(type==='radio'){
+        const c=fd.querySelector('input[type=radio]:checked'); val=c?c.value:'';
+      }else{
+        const inp=fd.querySelector('.gb-input'); val=inp?inp.value.trim():'';
+      }
+      if(req && !val){ err.textContent='请填写'+(fd.querySelector('.gb-label').textContent.replace('*','').trim()); firstBad=firstBad||fd; }
+      data[key]=val;
+    });
+    if(firstBad){ firstBad.scrollIntoView({behavior:'smooth',block:'center'}); firstBad.querySelector('.gb-input,.gb-check-group')?.focus(); return; }
+    /* 提交 */
+    btn.disabled=true; btn.innerHTML='<i class="bi bi-arrow-repeat spin"></i> 提交中…';
+    try{
+      const res=await fetch('/api/frontend/form/guest_book',{
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+      });
+      const json=await res.json();
+      if(json.code===0){
+        tip.innerHTML='<i class="bi bi-check-circle"></i> 提交成功，我们会尽快与您联系！';
+        tip.className='gb-tip ok';
+        form.reset();
+      }else{
+        tip.innerHTML='<i class="bi bi-x-circle"></i> '+ (json.msg||'提交失败，请稍后重试');
+        tip.className='gb-tip err';
+      }
+    }catch(err){
+      tip.innerHTML='<i class="bi bi-wifi-off"></i> 网络异常，请稍后重试';
+      tip.className='gb-tip err';
+    }finally{
+      btn.disabled=false; btn.innerHTML=submitBtn;
+    }
+  });
+})();
+</script>
+{% endblock %}

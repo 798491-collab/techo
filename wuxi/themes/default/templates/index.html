@@ -1,0 +1,19 @@
+{% extends "_page_index.html" %}
+{% block hero %}
+<section class="hero">
+  <div class="container hero-in">
+    <div class="issue-no">ISSUE 01 — 建筑咨询艺术</div>
+    <h1>{{ site.tagline or '专业，源于专注' }}</h1>
+    <p class="lead">{{ site.name }}，深耕建筑工程咨询领域，以专业、高效、合规为服务准则，为建筑企业解决各类难题。</p>
+    <div class="hero-meta"><span>建筑资质咨询</span><span class="dot">·</span><span>造价咨询</span><span class="dot">·</span><span>安许办理</span></div>
+    <a href="/about.html" class="read-more">阅读更多关于我们 <i class="fa-solid fa-arrow-right"></i></a>
+  </div>
+</section>
+
+{% endblock %}
+{% block services %}<div class="sec-head"><span class="kicker">OUR EXPERTISE</span><h2>专业服务</h2><p>围绕建筑企业发展需求，提供全方位咨询解决方案</p></div>{% endblock %}
+{% block newshead %}<div class="sec-head" style="text-align:left"><span class="kicker">JOURNAL</span><h2>行业洞察</h2></div>{% endblock %}
+{% block newsaside %}
+<div class="side-box quote-box"><span class="quote-mark">"</span><p>标准化服务流程，重视风险把控，为建筑企业解决资质申报、人员配置、项目咨询等各类难题。</p><div class="quote-by">— {{ site.short_name }}</div></div>
+{% endblock %}
+{% block scripts %}{% endblock %}

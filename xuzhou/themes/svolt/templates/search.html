@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_inner.html" import page_banner, sidebar with context %}
+{% block content %}
+{{ page_banner('搜索结果', 'Search') }}
+<div class="sv-wrap sv-inner-layout">
+  {{ sidebar(categories | selectattr('pid','equalto',0) | list, 0) }}
+  <div class="sv-inner-body">
+    <div class="sv-search-tip" data-reveal>关键词「<b>{{ keyword or '——' }}</b>」共找到 {{ items | length }} 条结果</div>
+    <div class="sv-news-list sv-search-list">
+      {% for it in items %}
+      <a href="{{ url_content(it) }}" class="sv-news-item">
+        <time>{{ it.created_at }}</time>
+        <div class="sv-news-item-txt"><h3>{{ it.title }}</h3>{% if it.summary %}<p>{{ it.summary | truncate(64) }}</p>{% endif %}</div>
+        <i class="bi bi-chevron-right"></i>
+      </a>
+      {% else %}
+      <div class="sv-empty"><i class="bi bi-inbox"></i><p>未找到相关内容</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

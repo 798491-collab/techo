@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_inner.html" import page_banner, sidebar with context %}
+{% block content %}
+<div data-page-template="page" hidden></div>
+{{ page_banner(category.name or '关于我们', 'About Us') }}
+<div class="sv-wrap sv-inner-layout">
+  {{ sidebar(categories | selectattr('pid','equalto',0) | list, category.id) }}
+  <article data-reveal class="sv-inner-body sv-detail">
+    <div class="sv-detail-body">{{ body_html | safe }}</div>
+
+  </article>
+</div>
+{% endblock %}

@@ -1,0 +1,352 @@
+{
+  "admin": {
+    "username": "admin",
+    "password": "${PYSITE_ADMIN_PASSWORD}",
+    "nickname": "南京站管理员"
+  },
+  "settings": {
+    "site_name": "南京筑韬建筑工程有限公司",
+    "site_phone": "025-8501 6688",
+    "site_mobile": "17710727587",
+    "site_email": "service@nj-zhutao.com",
+    "site_address": "江苏省南京市",
+    "site_keywords": "南京建筑资质代办,建筑资质新办,建造师注册",
+    "site_description": "南京筑韬建筑工程有限公司，专注建筑企业资质与建工人才注册一站式咨询服务。",
+    "site_copyright": "© 2026 南京筑韬建筑工程有限公司 版权所有",
+    "site_wechat": "/uploads/微信二维码.jpg",
+    "site_logo": "/uploads/8239034099a1.png",
+    "site_short_name": "筑韬建筑",
+    "site_tagline": "专注建筑企业资质与建工人才注册一站式咨询服务",
+    "site_city": "南京",
+    "site_industry": "建筑工程咨询",
+    "icp_no": "苏ICP备00000000号",
+    "police_no": "苏公网安备 32010002000000号"
+  },
+  "tags": [
+    {
+      "name": "建筑资质",
+      "sort": 1
+    },
+    {
+      "name": "建造师",
+      "sort": 2
+    },
+    {
+      "name": "资质新办",
+      "sort": 3
+    },
+    {
+      "name": "人才注册",
+      "sort": 4
+    }
+  ],
+  "categories": [
+    {
+      "name": "关于我们",
+      "slug": "about",
+      "model": "page",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 1,
+      "status": 1,
+      "description": "关于我们 - 专业服务与资讯",
+      "seo_title": "关于我们",
+      "seo_keywords": "",
+      "seo_description": ""
+    },
+    {
+      "name": "资质服务",
+      "slug": "zizhi",
+      "model": "product",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 2,
+      "status": 1,
+      "description": "资质服务 - 专业服务与资讯",
+      "seo_title": "资质服务",
+      "seo_keywords": "",
+      "seo_description": ""
+    },
+    {
+      "name": "人才注册",
+      "slug": "rencai",
+      "model": "product",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 3,
+      "status": 1,
+      "description": "人才注册 - 专业服务与资讯",
+      "seo_title": "人才注册",
+      "seo_keywords": "",
+      "seo_description": ""
+    },
+    {
+      "name": "新闻资讯",
+      "slug": "news",
+      "model": "article",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 4,
+      "status": 1,
+      "description": "新闻资讯 - 专业服务与资讯",
+      "seo_title": "新闻资讯",
+      "seo_keywords": "",
+      "seo_description": ""
+    },
+    {
+      "name": "联系我们",
+      "slug": "contact",
+      "model": "page",
+      "pid": 0,
+      "is_nav": 1,
+      "sort": 5,
+      "status": 1,
+      "description": "联系我们 - 专业服务与资讯",
+      "seo_title": "联系我们",
+      "seo_keywords": "",
+      "seo_description": ""
+    }
+  ],
+  "forms": [
+    {
+      "name": "在线咨询",
+      "code": "consult",
+      "fields": [
+        {
+          "label": "姓名",
+          "name": "name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "label": "电话",
+          "name": "phone",
+          "type": "text",
+          "required": true
+        },
+        {
+          "label": "咨询内容",
+          "name": "content",
+          "type": "textarea",
+          "required": true
+        }
+      ],
+      "notify_email": "",
+      "status": 1
+    }
+  ],
+  "contents": [
+    {
+      "category_slug": "about",
+      "model": "page",
+      "title": "关于筑韬",
+      "subtitle": "",
+      "summary": "南京筑韬建筑工程有限公司，是专注建筑行业一站式咨询服务机构，深耕建筑企业资质与建工人才注册两大业务板块。",
+      "body": "<h2>关于筑韬</h2><p>南京筑韬建筑工程有限公司，是专注建筑行业一站式咨询服务机构，深耕建筑企业资质与建工人才注册两大业务板块。</p><p>团队熟悉住建审批政策、四库一平台申报规则，专业为建筑企业提供建筑业资质新办、动态核查维护；同时承接一级/二级建造师注册、注销全流程咨询代办，配套造价工程师、环评工程师等执业证书备案咨询服务。</p><p>从前期方案规划、申报提交，到审核跟进、办结交付，实行一对一项目顾问负责制。坚持合规申报、流程透明，严控申报驳回风险，助力企业快速取得资质、完成人员注册，降低企业资质维护成本。</p><p>服务覆盖房建、公路等多专业建筑企业，兼顾持证人才注册咨询。守信为宗旨，为建筑企业资质全周期管理与建工执业人才注册提供稳定可靠的解决方案。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 1,
+      "is_hot": 0,
+      "seo_title": "关于筑韬",
+      "seo_keywords": "",
+      "seo_description": "南京筑韬建筑工程有限公司，是专注建筑行业一站式咨询服务机构，深耕建筑企业资质与建工人才注册两大业务板块。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "zizhi",
+      "model": "product",
+      "title": "建筑业企业资质新办与升级",
+      "subtitle": "",
+      "summary": "熟悉住建审批政策与四库一平台申报规则，为建筑企业提供资质新办、增项、升级与变更服务。",
+      "body": "<h2>建筑业企业资质服务</h2><p>我们为建筑企业提供建筑业施工资质新办、增项、升级、变更、延期等全流程咨询代办服务。</p><ul><li>建筑业企业资质新办、增项、升级</li><li>资质动态核查与维护</li><li>安全生产许可证办理咨询</li><li>四库一平台信息申报与维护</li></ul><p>一对一项目顾问负责制，从方案规划到办结交付全程跟进，严控申报驳回风险。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "建筑资质,资质新办",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 1,
+      "seo_title": "建筑业企业资质新办与升级",
+      "seo_keywords": "",
+      "seo_description": "熟悉住建审批政策与四库一平台申报规则，为建筑企业提供资质新办、增项、升级与变更服务。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "zizhi",
+      "model": "product",
+      "title": "资质动态核查与维护",
+      "subtitle": "",
+      "summary": "帮助企业应对资质动态核查，建立健全资质维护机制，降低资质维护成本。",
+      "body": "<h2>资质动态核查与维护</h2><p>针对住建部门资质动态核查要求，我们为企业提供人员配置核查、社保比对、业绩材料整理等一站式维护服务，确保企业资质持续有效。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "建筑资质",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "资质动态核查与维护",
+      "seo_keywords": "",
+      "seo_description": "帮助企业应对资质动态核查，建立健全资质维护机制，降低资质维护成本。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "rencai",
+      "model": "product",
+      "title": "一级/二级建造师注册代办",
+      "subtitle": "",
+      "summary": "承接一级、二级建造师注册、注销全流程咨询代办，配套造价工程师、环评工程师等执业证书备案咨询。",
+      "body": "<h2>建工人才注册服务</h2><p>我们承接一级/二级建造师注册、注销、变更全流程咨询代办服务，同时提供造价工程师、环评工程师等执业证书备案咨询。</p><ul><li>一级/二级建造师注册与注销</li><li>造价工程师、环评工程师证书备案</li><li>持证人才注册咨询</li><li>人员配置方案规划</li></ul>",
+      "author": "",
+      "source": "原创",
+      "tags": "建造师,人才注册",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 1,
+      "seo_title": "一级/二级建造师注册代办",
+      "seo_keywords": "",
+      "seo_description": "承接一级、二级建造师注册、注销全流程咨询代办，配套造价工程师、环评工程师等执业证书备案咨询。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "news",
+      "model": "article",
+      "title": "建筑企业资质动态核查常见问题解析",
+      "subtitle": "",
+      "summary": "梳理建筑企业资质动态核查中的常见问题，帮助企业提前准备、合规应对。",
+      "body": "<h2>资质动态核查常见问题解析</h2><p>资质动态核查主要关注企业人员、社保、业绩等方面。我们梳理了常见问题，帮助企业提前准备、合规应对，避免因材料不齐或人员不符导致核查不通过。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "建筑资质",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "建筑企业资质动态核查常见问题解析",
+      "seo_keywords": "",
+      "seo_description": "梳理建筑企业资质动态核查中的常见问题，帮助企业提前准备、合规应对。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "news",
+      "model": "article",
+      "title": "四库一平台申报要点与注意事项",
+      "subtitle": "",
+      "summary": "全国建筑市场监管公共服务平台信息申报要点解读。",
+      "body": "<h2>四库一平台申报要点</h2><p>四库一平台是建筑市场监管的重要数据基础。企业信息的准确性、完整性直接影响资质申报与核查结果。本文梳理申报过程中的关键要点与常见错误。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "建筑资质",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "四库一平台申报要点与注意事项",
+      "seo_keywords": "",
+      "seo_description": "全国建筑市场监管公共服务平台信息申报要点解读。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "news",
+      "model": "article",
+      "title": "建造师注册流程与材料清单",
+      "subtitle": "",
+      "summary": "一级、二级建造师注册全流程解析与材料准备清单。",
+      "body": "<h2>建造师注册流程详解</h2><p>建造师注册涉及申请、审核、公示等多个环节。我们整理了完整的流程说明与材料清单，帮助企业和持证人才高效完成注册。</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "建造师",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "建造师注册流程与材料清单",
+      "seo_keywords": "",
+      "seo_description": "一级、二级建造师注册全流程解析与材料准备清单。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "category_slug": "contact",
+      "model": "page",
+      "title": "联系我们",
+      "subtitle": "",
+      "summary": "欢迎来电或到访咨询，我们将竭诚为您服务。",
+      "body": "<h2>联系我们</h2><p>南京筑韬建筑工程有限公司，期待与您合作。</p><p><strong>电话：</strong>025-8501 6688</p><p><strong>手机：</strong>17710727587</p><p><strong>邮箱：</strong>service@nj-zhutao.com</p><p><strong>地址：</strong>江苏省南京市</p>",
+      "author": "",
+      "source": "原创",
+      "tags": "",
+      "status": "publish",
+      "publish_at": "now",
+      "is_top": 0,
+      "is_hot": 0,
+      "seo_title": "联系我们",
+      "seo_keywords": "",
+      "seo_description": "欢迎来电或到访咨询，我们将竭诚为您服务。",
+      "sort": 0,
+      "cover": ""
+    },
+    {
+      "title": "专业筑基 · 诚信致远",
+      "summary": "建筑企业资质全周期管理 · 建工执业人才注册咨询",
+      "cover": "",
+      "model": "banner",
+      "status": "publish",
+      "extra": "{\"sub_title\": \"建筑企业资质全周期管理 · 建工执业人才注册咨询\"}"
+    },
+    {
+      "title": "资质新办 · 动态核查",
+      "summary": "熟悉住建审批政策与四库一平台申报规则",
+      "cover": "",
+      "model": "banner",
+      "status": "publish",
+      "extra": "{\"sub_title\": \"熟悉住建审批政策与四库一平台申报规则\"}"
+    },
+    {
+      "title": "一对一项目顾问负责制",
+      "summary": "从方案规划到办结交付，流程透明合规申报",
+      "cover": "",
+      "model": "banner",
+      "status": "publish",
+      "extra": "{\"sub_title\": \"从方案规划到办结交付，流程透明合规申报\"}"
+    },
+    {
+      "title": "10+",
+      "summary": "行业经验",
+      "model": "stat",
+      "status": "publish",
+      "sort": 1
+    },
+    {
+      "title": "500+",
+      "summary": "服务企业",
+      "model": "stat",
+      "status": "publish",
+      "sort": 2
+    },
+    {
+      "title": "98%",
+      "summary": "申报通过率",
+      "model": "stat",
+      "status": "publish",
+      "sort": 3
+    },
+    {
+      "title": "1对1",
+      "summary": "顾问服务",
+      "model": "stat",
+      "status": "publish",
+      "sort": 4
+    }
+  ]
+}

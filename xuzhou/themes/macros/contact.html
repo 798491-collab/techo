@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "common.html" as cm %}
+{% block seo %}{{ cm.seo(site, '联系我们') }}{% endblock %}
+{% block content %}
+  {{ cm.breadcrumb(site, [{'name': '联系我们'}]) }}
+  <section class="sec contact-sec">
+    <div class="container">
+      {% block contactHead %}<div class="page-head"><h1>联系我们</h1><p>CONTACT US · 欢迎来电或在线留言</p></div>{% endblock %}
+      <div class="contact-layout">
+        <div class="contact-info">
+          {% block contactInfo %}{% endblock %}
+          <h3>{{ site.name }}</h3>
+          <p>{{ page_item.summary or site.tagline }}</p>
+          <ul class="info-list">
+            <li><span class="ilabel">联系电话</span>{{ settings.site_phone or site.phone }}</li>
+            {% if settings.site_mobile or site.mobile %}<li><span class="ilabel">手机</span>{{ settings.site_mobile or site.mobile }}</li>{% endif %}
+            <li><span class="ilabel">电子邮箱</span>{{ settings.site_email or site.email }}</li>
+            <li><span class="ilabel">公司地址</span>{{ settings.site_address or site.address }}</li>
+          </ul>
+          {% if settings.site_wechat %}
+          <div class="wechat-box"><img src="{{settings.site_wechat}}" alt="微信二维码"><span>微信二维码</span></div>
+          {% endif %}
+        </div>
+        <div class="contact-form-wrap">
+          <h3>在线留言</h3>
+          <form id="message-form" class="contact-form">
+            <div class="form-row"><input name="name" placeholder="您的姓名 *" required><input name="phone" placeholder="联系电话 *" required></div>
+            <div class="form-row"><input name="company" placeholder="公司名称"><input name="email" placeholder="电子邮箱"></div>
+            <textarea name="content" placeholder="请填写您的咨询内容…" rows="6" required></textarea>
+            <button type="submit" class="submit-btn">提交留言 <span>→</span></button>
+            <div id="form-msg" class="form-msg"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('message-form').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(this));
+  const btn = this.querySelector('.submit-btn'); btn.disabled = true;
+  try {
+    const res = await fetch('/api/frontend/message', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const json = await res.json();
+    document.getElementById('form-msg').textContent = json.msg || '提交成功';
+    document.getElementById('form-msg').style.color = json.code===0 ? 'var(--primary)' : '#c33';
+    if(json.code===0) this.reset();
+  } catch(err) { document.getElementById('form-msg').textContent='提交失败，请稍后重试'; }
+  btn.disabled = false;
+});
+</script>
+{% endblock %}

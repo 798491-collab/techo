@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+{% block seo %}{% endblock %}
+<link rel="icon" href="{{ settings.get('site_favicon') or ('/theme-assets/favicon.ico?v='~static_ver) }}">
+<link rel="stylesheet" href="/theme-assets/css/style.css">
+<link rel="stylesheet" href="/theme-libs/fontawesome/css/all.min.css?v={{ static_ver }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-in">
+    <a href="/" class="brand"><span class="mark-shape"><span></span><span></span><span></span></span><span class="brand-name">{{ site.short_name }}<small>ZHIYU · ARCHITECTURE</small></span></a>
+    <nav class="main-nav">
+      <a href="/" class="{{ 'active' if path=='/' }}">首页</a>
+      {% for c in nav_categories %}
+      <a href="{{ url_category(c.slug) }}" class="{{ 'active' if path == url_category(c.slug) }}">{{ c.name }}</a>
+      {% endfor %}
+    </nav>
+    <a href="/contact.html" class="nav-cta">开始咨询 <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+  </div>
+</header>
+{% block hero %}{% endblock %}
+{% block content %}{% endblock %}
+<footer class="site-footer">
+  <div class="container f-grid">
+    <div><div class="brand"><span class="mark-shape"><span></span><span></span><span></span></span><span class="brand-name">{{ site.short_name }}<small>ZHIYU · ARCHITECTURE</small></span></div><p>{{ site.tagline }}</p></div>
+    <div><h4>SITEMAP</h4>{% for c in nav_categories[:6] %}<a href="{{ url_category(c.slug) }}">{{ c.name }}</a>{% endfor %}</div>
+    <div><h4>CONTACT</h4><p>{{ site.phone or site.mobile }}</p><p>{{ site.email }}</p><p>{{ site.address }}</p></div>
+  </div>
+  <div class="f-bottom container">{{ site.copyright or ('© 2026 '~site.name) }} · <a href="https://beian.miit.gov.cn" rel="nofollow noreferrer" target="_blank">{{ site.icp }}</a>{% if site.gongan_icp %} &nbsp;·&nbsp; <a href="https://beian.mps.gov.cn/" rel="nofollow noreferrer" target="_blank">{{ site.gongan_icp }}</a>{% endif %} &nbsp;·&nbsp; <a href="/sitemap.xml" target="_blank">网站地图</a></div>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

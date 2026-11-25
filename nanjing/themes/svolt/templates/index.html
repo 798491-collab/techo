@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block hero %}
+{# ===== 全屏首屏轮播 ===== #}
+<section class="sv-hero" id="svHero">
+  {% set slides = banners if banners else site.slides %}
+  {% for s in slides %}
+  <div class="sv-slide {{ 'on' if loop.first }}">
+    <div class="sv-slide-bg sv-slide-bg-{{ loop.index }}" {% if s.image %}style="background-image:url('{{ oss(s.image, 1920, 640) }}')"{% endif %}></div>
+    <div class="sv-wrap sv-slide-txt">
+      <h2>{{ s.title }}</h2>
+      <p>{{ s.subtitle }}</p>
+    </div>
+  </div>
+  {% endfor %}
+  <button class="sv-hero-arrow sv-prev" id="svPrev" aria-label="上一张"><i class="bi bi-chevron-left"></i></button>
+  <button class="sv-hero-arrow sv-next" id="svNext" aria-label="下一张"><i class="bi bi-chevron-right"></i></button>
+  <div class="sv-hero-dots">
+    {% for s in slides %}<button data-go="{{ loop.index }}" class="{{ 'on' if loop.first }}"></button>{% endfor %}
+  </div>
+  <div class="sv-hero-scroll"><i class="bi bi-mouse"></i><span>向下滚动</span></div>
+</section>
+{% endblock %}
+{% block content %}
+{# ===== 服务项目（product 模型内容驱动，数量由模板截取） ===== #}
+<section class="sv-solutions" data-reveal>
+  <div class="sv-wrap">
+    <div class="sv-sec-head-row sv-light">
+      <div>
+        <p class="sv-sec-en">Our Services</p>
+        <h2 class="sv-sec-title">服务项目</h2>
+      </div>
+    </div>
+    {% set svc = product_items if product_items else [] %}
+    <div class="sv-sol-grid">
+      {% for t in svc[:4] %}
+      <a href="{{ url_content(t) }}" class="sv-sol-card sv-sol-{{ loop.index }}">
+        <div class="sv-sol-bg"></div>
+        <div class="sv-sol-body">
+          <em>0{{ loop.index }}</em>
+          <h3>{{ t.title | truncate(20) }}</h3>
+          <p>{{ t.summary | default('提供专业、可靠的一站式解决方案与服务保障。') | truncate(50) }}</p>
+          <span>了解更多 <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ===== 关于 + 数字统计（深蓝底） ===== #}
+<section class="sv-about" data-reveal>
+  <div class="sv-wrap sv-about-grid">
+    <div>
+      <div class="sv-about-head">
+        <div>
+          <p class="sv-about-tag">About Us</p>
+          <h2 class="sv-about-title">公司简介</h2>
+        </div>
+        <a href="/about.html" class="sv-btn-ghost">了解详情 <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <p class="sv-about-desc">{{ site.description or site.tagline }}</p>
+      <p class="sv-about-desc">{{ site.name }}深耕{{ site.industry | default('建筑咨询') }}领域，凭借丰富的行业经验、专业的申报团队与完善的服务体系，为全国企业提供资质代办、升级、延期、变更等一站式咨询服务，赢得了广大客户的信赖与好评。</p>
+    </div>
+    {% if about_page and about_page.cover %}<div class="sv-about-img"><img src="{{ oss(about_page.cover, 522, 380) }}" alt="{{ about_page.title | default('关于我们') }}"></div>{% endif %}
+  </div>
+</section>
+
+{# ===== 新闻资讯（左大图 + 右列表） ===== #}
+<section class="sv-section sv-news-sec" data-reveal>
+  <div class="sv-wrap">
+    <div class="sv-sec-head-row">
+      <div>
+        <p class="sv-sec-en">Latest News</p>
+        <h2 class="sv-sec-title">最新资讯</h2>
+      </div>
+      <a href="/news.html" class="sv-more-link">更多新闻 <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="sv-news-grid">
+      {% if news_items %}
+      <a href="{{ url_content(news_items[0]) }}" class="sv-news-lead">
+        <div class="sv-news-lead-cover"><img src="{{ oss(news_items[0].cover, 666, 330) or '/theme-assets/img/ph-news1.svg' }}" alt="{{ news_items[0].title }}" loading="lazy"></div>
+        <div class="sv-news-lead-body">
+          <time>{{ news_items[0].created_at }}</time>
+          <h3>{{ news_items[0].title }}</h3>
+          {% if news_items[0].summary %}<p>{{ news_items[0].summary | truncate(80) }}</p>{% endif %}
+          <span>了解详情 <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </a>
+      <div class="sv-news-list">
+        {% for h in news_items[1:5] %}
+        <a href="{{ url_content(h) }}" class="sv-news-item">
+          <time>{{ h.created_at }}</time>
+          <div class="sv-news-item-txt"><h3>{{ h.title | truncate(34) }}</h3>{% if h.summary %}<p>{{ h.summary | truncate(64) }}</p>{% endif %}</div>
+          <i class="bi bi-chevron-right"></i>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+/* 首屏轮播：自动播放 + 箭头 + 圆点 */
+(function(){
+  const hero=document.getElementById('svHero');
+  if(!hero) return;
+  const slides=[...hero.querySelectorAll('.sv-slide')];
+  const dots=[...hero.querySelectorAll('.sv-hero-dots button')];
+  let cur=0,timer=null;
+  function show(i){
+    cur=(i+slides.length)%slides.length;
+    slides.forEach((s,x)=>s.classList.toggle('on',x===cur));
+    dots.forEach((d,x)=>d.classList.toggle('on',x===cur));
+  }
+  function play(){ timer=setInterval(()=>show(cur+1),6000); }
+  document.getElementById('svPrev').onclick=()=>{clearInterval(timer);show(cur-1);play();};
+  document.getElementById('svNext').onclick=()=>{clearInterval(timer);show(cur+1);play();};
+  dots.forEach(d=>d.onclick=()=>{clearInterval(timer);show(+d.dataset.go-1);play();});
+  show(0);play();
+})();
+</script>
+{% endblock %}

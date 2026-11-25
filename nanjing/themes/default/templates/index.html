@@ -1,0 +1,32 @@
+{% extends "_page_index.html" %}
+{% block hero %}
+<section class="hero">
+  <div class="container hero-in">
+    <div class="hero-en">ARCHITECTURAL CONSULTING</div>
+    <h1>{{ site.tagline or '专业筑基 · 诚信致远' }}</h1>
+    <p>建筑企业资质全周期管理 · 建工执业人才注册咨询</p>
+    <div class="hero-btns"><a href="/zizhi.html" class="btn btn-gold">了解服务 <i class="fa-solid fa-arrow-right"></i></a><a href="/contact.html" class="btn btn-ghost">立即咨询</a></div>
+  </div>
+  <div class="hero-dots"><span class="on"></span><span></span><span></span></div>
+</section>
+<div class="stat-band">
+
+</div>
+{% endblock %}
+
+{% block services %}
+<div class="sec-head"><span class="sec-en">OUR SERVICES</span><h2>专业服务体系</h2></div>
+{% endblock %}
+
+{% block newshead %}
+<div class="sec-head" style="text-align:left"><span class="sec-en">NEWS & INFO</span><h2>新闻资讯</h2></div>
+{% endblock %}
+
+{% block newsaside %}
+<div class="side-box news-side">
+  <h3>联系我们</h3>
+  <p><i class="fa-solid fa-phone" style="color:var(--gold);margin-right:8px"></i> {{ site.phone or site.mobile }}</p>
+  <p><i class="fa-solid fa-location-dot" style="color:var(--gold);margin-right:8px"></i> {{ site.address }}</p>
+  <a href="/contact.html" class="btn btn-gold" style="margin-top:16px;width:100%;justify-content:center">在线咨询 →</a>
+</div>
+{% endblock %}

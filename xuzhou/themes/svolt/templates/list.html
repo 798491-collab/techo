@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_inner.html" import page_banner, sidebar, pager_nav with context %}
+{% block content %}
+{% set sibs = categories | selectattr('pid','equalto',category.id) | list %}
+{% if not sibs %}{% set sibs = categories | selectattr('pid','equalto',category.pid) | list %}{% endif %}
+{% if not sibs %}{% set sibs = categories | selectattr('pid','equalto',0) | list %}{% endif %}
+{{ page_banner(category.name) }}
+<div class="sv-wrap sv-inner-layout">
+  {{ sidebar(sibs, category.id, category.name) }}
+  <div class="sv-inner-body">
+    <div class="sv-list-grid">
+      {% for it in items %}
+      <a href="{{ url_content(it) }}" data-reveal class="sv-item-card">
+        <div class="sv-item-cover"><img src="{{ oss(it.cover, 292, 170) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ it.title }}" loading="lazy"></div>
+        <div class="sv-item-body">
+          <h3>{{ it.title | truncate(26) }}</h3>
+          {% if it.summary %}<p>{{ it.summary | truncate(46) }}</p>{% endif %}
+          <div class="sv-item-meta"><time>{{ it.created_at }}</time><span>了解更多 <i class="bi bi-arrow-right"></i></span></div>
+        </div>
+      </a>
+      {% else %}
+      <div class="sv-empty"><i class="bi bi-inbox"></i><p>暂无内容</p></div>
+      {% endfor %}
+    </div>
+    {{ pager_nav(url_category(category.slug), page, pages) }}
+  </div>
+</div>
+{% endblock %}

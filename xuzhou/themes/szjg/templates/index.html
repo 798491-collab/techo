@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block hero %}
+{# ===== 全屏大字 banner（多图轮播：banner 内容驱动，可切换） ===== #}
+<section class="jg-hero" id="jgHero">
+  {% set slides = banners if banners else site.slides %}
+  {% for s in slides %}
+  <div class="jg-hero-slide {{ 'on' if loop.first }}" data-slide="{{ loop.index }}">
+    <div class="jg-hero-bg" {% if s.image %}style="background-image:url('{{ oss(s.image, 1920, 660) }}');background-size:cover;background-position:center"{% endif %}></div>
+    <div class="jg-hero-txt jg-wrap">
+      <h1>{{ s.title }}</h1>
+      <div class="jg-hero-line"></div>
+      {% if s.subtitle %}<p class="jg-hero-desc">{{ s.subtitle }}</p>{% endif %}
+      <a href="/about.html" class="jg-btn jg-btn-solid">了解我们 <i class="bi bi-arrow-right"></i></a>
+    </div>
+  </div>
+  {% endfor %}
+  <button class="jg-hero-arrow jg-prev" id="jgPrev" aria-label="上一张"><i class="bi bi-chevron-left"></i></button>
+  <button class="jg-hero-arrow jg-next" id="jgNext" aria-label="下一张"><i class="bi bi-chevron-right"></i></button>
+  <div class="jg-hero-dots">
+    {% for s in slides %}<button data-go="{{ loop.index }}" class="{{ 'on' if loop.first }}" aria-label="第{{ loop.index }}张"></button>{% endfor %}
+  </div>
+  <div class="jg-hero-scroll"><i class="bi bi-mouse"></i><span>向下滚动</span></div>
+</section>
+{% endblock %}
+{% block content %}
+{# ===== 公司简介 ===== #}
+<section class="jg-intro jg-section" data-reveal>
+  <div class="jg-wrap">
+    <div class="jg-intro-grid">
+      <div class="jg-intro-txt">
+        <p class="jg-sec-en">About Us</p>
+        <h2 class="jg-sec-title">公司简介</h2>
+        <div class="jg-intro-line"></div>
+        <p>{{ site.description or site.tagline }}</p>
+        <p>{{ site.name }}深耕{{ site.industry | default('建筑咨询') }}领域，凭借丰富的行业经验、专业的申报团队与完善的服务体系，为全国企业提供资质代办、升级、延期、变更等一站式咨询服务，赢得了广大客户的信赖与好评。</p>
+        <a href="/about.html" class="jg-btn jg-btn-line">了解我们 <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="jg-intro-media">
+        <div class="jg-intro-img">{% if about_page and about_page.cover %}<img src="{{ oss(about_page.cover, 522, 400) }}" alt="{{ about_page.title | default('关于我们') }}">{% endif %}</div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+{# ===== 新闻中心（左图右列表，7 条全部展示，无筛选） ===== #}
+<section class="jg-news jg-section jg-bg" data-reveal>
+  <div class="jg-wrap">
+    <div class="jg-sec-head">
+      <p class="jg-sec-en">Latest News</p>
+      <h2 class="jg-sec-title">最新资讯</h2>
+      <div class="jg-sec-line"></div>
+    </div>
+    {% set news = news_items if news_items else [] %}
+    <div class="jg-news-grid">
+      {% if news %}
+      <a href="{{ url_content(news[0]) }}" class="jg-news-lead">
+        <div class="jg-news-lead-cover"><img src="{{ oss(news[0].cover, 650, 300) or '/theme-assets/img/ph-news1.svg' }}" alt="{{ news[0].title }}" loading="lazy"></div>
+        <div class="jg-news-lead-body"><h3>{{ news[0].title }}</h3><time>{{ news[0].created_at }}</time><span>查看详情 <i class="bi bi-arrow-right"></i></span></div>
+      </a>
+      <div class="jg-news-list">
+        {% for h in news[1:7] %}
+        <a href="{{ url_content(h) }}" class="jg-news-row">
+          <time>{{ h.created_at[5:10] }}</time>
+          <h3>{{ h.title | truncate(32) }}</h3>
+          <i class="bi bi-arrow-right"></i>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="jg-tab-more"><a href="/news.html" class="jg-btn jg-btn-line">全部新闻 <i class="bi bi-arrow-right"></i></a></div>
+  </div>
+</section>
+
+{# ===== 服务项目（product 模型内容驱动，数量由模板截取） ===== #}
+<section class="jg-layout jg-section" data-reveal>
+  <div class="jg-wrap">
+    <div class="jg-sec-head">
+      <p class="jg-sec-en">Our Services</p>
+      <h2 class="jg-sec-title">服务项目</h2>
+      <div class="jg-sec-line"></div>
+    </div>
+    {% set svc = product_items if product_items else [] %}
+    <div class="jg-layout-grid">
+      {% for t in svc[:4] %}
+      <a href="{{ url_content(t) }}" class="jg-layout-card">
+        <em>0{{ loop.index }}</em>
+        <div class="jg-layout-cover"><img src="{{ oss(t.cover, 284, 200) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
+        <h3>{{ t.title | truncate(20) }}</h3>
+        <p>{{ t.summary | default('专业团队全程护航，助力企业高效拿证。') | truncate(40) }}</p>
+        <span>查看详情 <i class="bi bi-arrow-right"></i></span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ===== 精选案例（案例网格） ===== #}
+<section class="jg-cases jg-section jg-bg" data-reveal>
+  <div class="jg-wrap">
+    <div class="jg-sec-head">
+      <p class="jg-sec-en">Cases</p>
+      <h2 class="jg-sec-title">精选案例</h2>
+      <div class="jg-sec-line"></div>
+    </div>
+    <div class="jg-case-grid">
+      {% for t in case_items[:3] %}
+      <a href="{{ url_content(t) }}" class="jg-case-card">
+        <div class="jg-case-cover"><img src="{{ oss(t.cover, 386, 190) or '/theme-assets/img/ph-case'~(loop.index0 % 3 + 1)~'.svg' }}" alt="{{ t.title }}" loading="lazy"></div>
+        <h3>{{ t.title | truncate(24) }}</h3>
+        <span>查看详情 <i class="bi bi-arrow-right"></i></span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+/* banner 轮播：自动播放 + 圆点切换 */
+(function(){
+  const hero=document.getElementById('jgHero');
+  if(!hero) return;
+  const slides=[...hero.querySelectorAll('.jg-hero-slide')];
+  const dots=[...hero.querySelectorAll('.jg-hero-dots button')];
+  if(slides.length<1) return;
+  let cur=0,timer=null;
+  function show(i){
+    cur=(i+slides.length)%slides.length;
+    slides.forEach((s,x)=>s.classList.toggle('on',x===cur));
+    dots.forEach((d,x)=>d.classList.toggle('on',x===cur));
+  }
+  function play(){ if(slides.length>1) timer=setInterval(()=>show(cur+1),6000); }
+  dots.forEach(d=>d.onclick=()=>{clearInterval(timer);show(+d.dataset.go-1);play();});
+  const prev=document.getElementById('jgPrev'), next=document.getElementById('jgNext');
+  if(prev) prev.onclick=()=>{clearInterval(timer);show(cur-1);play();};
+  if(next) next.onclick=()=>{clearInterval(timer);show(cur+1);play();};
+  show(0);play();
+})();
+/* 新闻 tab 切换 */
+(function(){
+  document.querySelectorAll('.jg-tab-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('.jg-tab-btn').forEach(function(b){b.classList.remove('on');});
+      document.querySelectorAll('.jg-tab-pane').forEach(function(p){p.classList.remove('on');});
+      btn.classList.add('on');
+      var pane=document.getElementById(btn.dataset.tab);
+      if(pane){ pane.classList.add('on'); if(window.gsap) gsap.fromTo(pane,{opacity:0,y:16},{opacity:1,y:0,duration:.5}); }
+    });
+  });
+})();
+</script>
+{% endblock %}

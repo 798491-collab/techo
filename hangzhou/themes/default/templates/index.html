@@ -1,0 +1,20 @@
+{% extends "_page_index.html" %}
+{% block hero %}
+<section class="hero">
+  <div class="hero-grid-bg"></div>
+  <div class="container hero-in">
+    <div class="hero-tag"><span class="tag-dot"></span> ARCHITECTURAL CREDENTIAL SERVICES</div>
+    <h1>{{ site.tagline or '志存高远 · 俞信于行' }}</h1>
+    <p>专注建筑资质办理与建工人才服务，为企业和人才提供专业、高效的一站式咨询服务。</p>
+    <div class="hero-btns"><a href="/service.html" class="btn btn-solid">探索服务 <i class="fa-solid fa-arrow-right"></i></a><a href="/about.html" class="btn btn-line">关于我们</a></div>
+  </div>
+  <div class="hero-scroll">SCROLL DOWN <span></span></div>
+</section>
+
+{% endblock %}
+{% block services %}<div class="sec-head"><span class="eyebrow">// WHAT WE OFFER</span><h2>核心服务</h2></div>{% endblock %}
+{% block newshead %}<div class="sec-head" style="text-align:left"><span class="eyebrow">// INSIGHTS</span><h2>最新资讯</h2></div>{% endblock %}
+{% block newsaside %}
+<div class="side-box info-card"><div class="ic-no">01</div><h3>联系我们</h3><p>{{ site.phone or site.mobile }}</p><p>{{ site.email }}</p><p>{{ site.address }}</p><a href="/contact.html" class="ic-link">在线咨询 →</a></div>
+{% endblock %}
+{% block scripts %}{% endblock %}
