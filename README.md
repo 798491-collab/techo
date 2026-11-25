@@ -28,7 +28,7 @@
 
 ## 本地启动
 
-进入对应站点的 scripts 目录（如 `nanjing/scripts/`）：
+进入对应站点的 scripts 目录（如 `sites/nanjing/scripts/`）：
 
 | 方式 | 操作 |
 | --- | --- |
@@ -36,14 +36,14 @@
 | 命令行 | `python start.py`（启动并打开浏览器）/ `--no-open` 不开浏览器 / `status` / `stop` |
 | 直接运行 | `python run.py`（前台阻塞，Ctrl+C 停止） |
 
-其余站点同理：`cd hefei/scripts`、`cd xuzhou/scripts`、`cd wuxi/scripts`、`cd hangzhou/scripts`。
+其余站点同理：`cd sites/hefei/scripts`、`cd sites/xuzhou/scripts`、`cd sites/wuxi/scripts`、`cd sites/hangzhou/scripts`。
 
 启动脚本特性：端口占用预检（避免重复启动）、健康检查等待就绪、依赖自动检查安装
 （自动探测 pypi / 清华 / 阿里 / 中科大镜像选最快）、本站独立日志 `storage/logs/run.log`、PID 记录用于可靠停止。
 
 ## 单站独立部署
 
-站点目录完全自包含：把 `nanjing/`（或任意一站）拷贝到任意机器/目录：
+站点目录完全自包含：把 `sites/nanjing/`（或任意一站）拷贝到任意机器/目录：
 
 1. `cd nanjing/scripts && python start.py` —— 首次运行自动在本站目录创建 `.venv` 并安装依赖
    （fastapi、uvicorn、jinja2、sqlalchemy 等，自动选最快镜像源）；
@@ -78,7 +78,7 @@ servicelb / local-storage，系统 Pod 仅 CoreDNS，2 核 / 1.9G 内存跑五�
   `http://<服务器IP>:8300/hook?token=<WebHook Token>`
 - 部署脚本在仓库外 `/root/k3s-deploy.sh`（不会被 `git reset` 覆盖；源码备份在仓库 `k8s/k3s-deploy.sh`），流程：
   1. `git fetch + reset --hard` 更新代码（`storage/` 被 gitignore，不受影响）；
-  2. **数据卷校验**：五站 site.db 存在、体积不缩小、article 记录数不减少，异常立即中止；
+  2. **数据卷就绪检查**：五站 `sites/<站点>/storage/site.db` 存在且非空，异常立即中止；
   3. `kubectl rollout restart` 五站 Deployment（滚动重启）；
   4. 健康检查：五站 HTTP 200，失败自动 `rollout undo` 回滚。
 - **git push 即部署，无需人工确认**；部署日志 `scripts/k3s-deploy.log`（webhook 日志 `scripts/webhook.log`）。
@@ -104,7 +104,7 @@ kubectl -n pysite rollout undo deploy/pysite-nanjing     # 回滚某站上次变
 tail -f /www/wwwroot/pysite/scripts/k3s-deploy.log       # 部署日志
 ```
 
-站点运行日志在容器内 `storage/logs/site.log`，即宿主机 `/www/wwwroot/pysite/<站点>/storage/logs/site.log`。
+站点运行日志在容器内 `storage/logs/site.log`，即宿主机 `/www/wwwroot/pysite/sites/<站点>/storage/logs/site.log`。
 
 ### 访问方式与备份
 
@@ -118,20 +118,20 @@ tail -f /www/wwwroot/pysite/scripts/k3s-deploy.log       # 部署日志
 
 ```
 py-site/
+├── sites/                    # ★ 五个站点，每个都是完全独立系统（可直接整体拷走部署，内含独立 README.md）
+│   ├── nanjing/
+│   │   ├── src/app/          #   配置 / 数据库 / 模型 / 缓存 / 安全 / 应用工厂 / 各业务模块
+│   │   ├── admin/            #   管理后台静态前端（随代码发版，FastAPI 托管）
+│   │   ├── themes/           #   主题模板 / 静态资源 / 组件宏
+│   │   ├── scripts/          #   站点脚本：run.py / start.py / *.bat / reset_admin / migrate / seed
+│   │   ├── site.json         #   站点配置（公司信息 / 主题 / 端口 / 导航 / 轮播）
+│   │   ├── .env              #   密钥（不入库，首次启动自动生成）
+│   │   └── storage/          #   唯一持久化目录：SQLite / 上传 / 缓存 / 日志 / 会话 / 临时（容器只挂此卷）
+│   └── hefei/ xuzhou/ wuxi/ hangzhou/   # 各自同样结构，完全独立
 ├── k8s/                      # K3s 部署清单：namespace / 五站 Deployment / Dashboard / webhook / 部署脚本源
 ├── scripts/                  # 项目级脚本：nginx 反代配置源、部署日志
 ├── venv/                     # Python 虚拟环境（服务器 K3s 共享依赖，本地单站运行不需要）
-├── README.md                 # 本文档（项目总览 + 部署总说明）
-├── nanjing/                  # 完全独立的站点（可直接整体拷走部署，内含独立 README.md）
-│   ├── src/app/              # 配置 / 数据库 / 模型 / 缓存 / 安全 / 应用工厂 / 各业务模块
-│   ├── admin/                # 管理后台静态前端（随代码发版，FastAPI 托管）
-│   ├── themes/               # 主题模板 / 静态资源 / 组件宏
-│   ├── scripts/              # 站点脚本：run.py / start.py / *.bat / reset_admin / migrate / seed
-│   ├── site.json             # 站点配置（公司信息 / 主题 / 端口 / 导航 / 轮播）
-│   ├── .env                  # 密钥（不入库，首次启动自动生成）
-│   ├── .env.example          # 端口等基础配置（start.py 读取）
-│   └── storage/              # 唯一持久化目录：SQLite / 上传 / 缓存 / 日志 / 会话 / 临时（容器只挂此卷）
-├── hefei/ xuzhou/ wuxi/ hangzhou/  # 各自同样结构，完全独立
+└── README.md                 # 本文档（项目总览 + 部署总说明）
 ```
 
 **storage/ 是唯一持久化目录**：数据库、上传、缓存、日志、会话、临时文件全在里面；

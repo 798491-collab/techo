@@ -69,7 +69,7 @@ spec:
       volumes:
         - name: site
           hostPath:
-            path: /www/wwwroot/pysite/hefei
+            path: /www/wwwroot/pysite/sites/hefei
             type: Directory
         - name: packages
           hostPath:

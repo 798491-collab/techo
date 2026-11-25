@@ -69,7 +69,7 @@ spec:
       volumes:
         - name: site
           hostPath:
-            path: /www/wwwroot/pysite/wuxi
+            path: /www/wwwroot/pysite/sites/wuxi
             type: Directory
         - name: packages
           hostPath:

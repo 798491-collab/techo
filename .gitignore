@@ -19,14 +19,15 @@ __pycache__/
 !**/storage/**/
 !**/storage/**/.gitkeep
 
-# 旧目录（升级兼容）：只忽略站点根下的旧目录，不能匹配 storage/uploads 这类内部目录
-/*/data/
-/*/uploads/
-/*/runtime/
+# 旧目录（升级兼容）：只忽略站点目录下的旧目录，不能匹配 storage/uploads 这类内部目录
+sites/*/data/
+sites/*/uploads/
+sites/*/runtime/
+sites/*/var/
 
 # 备份与临时
 backups/
-*/backups/
+**/backups/
 *.tmp
 *.swp
 
@@ -74,4 +75,4 @@ static_html/
 .env
 
 # 更早的旧目录
-/*/var/
+sites/*/var/

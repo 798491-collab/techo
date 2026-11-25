@@ -9,7 +9,7 @@
 - **共用镜像**：`python:3.10-slim`（唯一镜像），依赖从宿主机 venv 的 site-packages
   以只读 hostPath 挂入（PYTHONPATH），无需为每个站构建镜像，最省磁盘。
 - **代码与数据分离**：
-  - 站点目录 `/www/wwwroot/pysite/<site>/` 整体挂到容器 `/app`（含 src/admin/themes/.env）
+  - 站点目录 `/www/wwwroot/pysite/sites/<site>/` 整体挂到容器 `/app`（含 src/admin/themes/.env）
   - `storage/`（db/uploads/cache/logs/sessions）在站点目录内，随 hostPath 持久化
   - **git pull 只更新跟踪文件，storage 被 .gitignore 忽略，永不覆盖**
 
@@ -50,8 +50,8 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
 部署脚本执行流程：
 
 1. `git fetch + reset --hard`（更新代码，不碰 storage）
-2. 校验 5 站数据库：文件存在、体积不缩小、文章数不减少（运行中 SQLite 会被写入，
-   故不用 md5 比对；只拦截"覆盖/丢失"而非正常写入）
+2. 数据卷就绪检查：五站 `sites/<站点>/storage/site.db` 存在且非空（storage 是 gitignore 的
+   挂载数据卷，git 不触碰；此检查只防目录结构异常，无备份/复制开销）
 3. `kubectl rollout restart` 五站 Deployment（hostPath 代码更新后重启即生效）
 4. 等待就绪 + 五站 HTTP 200 健康检查
 5. 任一失败 → 自动回滚代码 + 重启

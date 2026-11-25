@@ -69,7 +69,7 @@ spec:
       volumes:
         - name: site
           hostPath:
-            path: /www/wwwroot/pysite/hangzhou
+            path: /www/wwwroot/pysite/sites/hangzhou
             type: Directory
         - name: packages
           hostPath:
