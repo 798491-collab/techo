@@ -10,7 +10,8 @@ metadata:
   namespace: kubernetes-dashboard
 type: Opaque
 stringData:
-  csrf: "k3s-dashboard-csrf-fixed-key-2026"
+  # 留空由 Dashboard 启动时自动生成/更新（勿写固定值）
+  csrf: ""
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -71,6 +72,9 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - --namespace=kubernetes-dashboard
+            # 通过 HTTP(9090) 访问时必须开启，否则后端视为非安全模式，
+            # 所有请求都会用 dashboard 自身 SA 执行（登录 token 被无视，处处 Forbidden）
+            - --enable-insecure-login
           ports:
             - containerPort: 8443
               protocol: TCP
