@@ -38,6 +38,10 @@ _FORMATS = {"webp": ("WEBP", "image/webp"), "jpg": ("JPEG", "image/jpeg"), "jpeg
 _MAX_EDGE = 4096
 _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
+# 缩略图处理是同步 CPU + 大内存操作（uvicorn 会把同步路由放进线程池并发执行）。
+# 大图解码一张可达数十 MB，不限制并发时后台列表一次加载十几张就会打爆容器内存。
+# 全局只允许 2 张同时处理；结果有磁盘缓存，后续请求零成本。
+_process_sem = threading.Semaphore(2)
 
 
 def with_process(url: str, process: str) -> str:
@@ -86,32 +90,33 @@ def cached_process(uploads: Path, cache_dir: Path, rel: str, process: str) -> tu
     token = _stamp(src)
     if _fresh(dest, stamp_path, token):
         return dest, media
-    lock = _lock_for(str(dest))
-    with lock:
-        token = _stamp(src)
-        if _fresh(dest, stamp_path, token):
-            return dest, media
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        tmp = dest.with_name(dest.name + ".tmp")
-        try:
-            _write(src, tmp, spec)
-        except Exception:
-            tmp.unlink(missing_ok=True)
-            if spec.get("format") == "webp":
-                spec = dict(spec)
-                spec["format"] = "jpg"
-                dest, stamp_path, media = _cache_paths(cache_dir, rel, process, "jpg")
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                tmp = dest.with_name(dest.name + ".tmp")
-                try:
-                    _write(src, tmp, spec)
-                except Exception:
-                    tmp.unlink(missing_ok=True)
+    with _process_sem:
+        lock = _lock_for(str(dest))
+        with lock:
+            token = _stamp(src)
+            if _fresh(dest, stamp_path, token):
+                return dest, media
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dest.with_name(dest.name + ".tmp")
+            try:
+                _write(src, tmp, spec)
+            except Exception:
+                tmp.unlink(missing_ok=True)
+                if spec.get("format") == "webp":
+                    spec = dict(spec)
+                    spec["format"] = "jpg"
+                    dest, stamp_path, media = _cache_paths(cache_dir, rel, process, "jpg")
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    tmp = dest.with_name(dest.name + ".tmp")
+                    try:
+                        _write(src, tmp, spec)
+                    except Exception:
+                        tmp.unlink(missing_ok=True)
+                        return None
+                else:
                     return None
-            else:
-                return None
-        tmp.replace(dest)
-        stamp_path.write_text(token, encoding="utf-8")
+            tmp.replace(dest)
+            stamp_path.write_text(token, encoding="utf-8")
     return (dest, media) if dest.is_file() else None
 
 
@@ -162,6 +167,15 @@ def _cache_paths(cache_dir: Path, rel: str, process: str, fmt: str) -> tuple[Pat
 def _write(src: Path, dest: Path, spec: dict) -> None:
     resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS")
     with Image.open(src) as im:
+        # JPEG 在解码阶段就按目标尺寸降采样。6000px 级原图解码成 RGB 约 72MB，
+        # 不降采样时后台列表并发处理十几张就会打爆容器 256Mi 内存限制；
+        # 目标是 120×80 这类缩略图，降采样对最终画质没有影响。
+        if im.format in ("JPEG", "MPO"):
+            try:
+                want = (max(spec["w"] * 2, 256), max(spec["h"] * 2, 256))
+                im.draft(im.mode, want)
+            except Exception:
+                pass
         if getattr(im, "is_animated", False):
             im.seek(0)
         frame = ImageOps.exif_transpose(im) if spec["orient"] else im
