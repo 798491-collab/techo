@@ -343,20 +343,19 @@ def _align_permission_tree(db: Session) -> int:
         ("编辑内容", "content.edit", "内容管理", 2, "bi-pencil", "button"),
         ("删除内容", "content.delete", "内容管理", 3, "bi-trash", "button"),
     ]
-    priv_keys = {pnode[1] for pnode in priv}
     existing = db.scalars(select(AdminPermission)).all()
-    # 所有"受管节点"= 菜单树 + 特权节点；签名比对 key+name，结构中任一变化即重建
-    managed_keys = {e[1] for e in expected} | priv_keys
-    managed = {r.key: r for r in existing if r.key in managed_keys}
-    sig_now = tuple(sorted((k, r.name or "") for k, r in managed.items()))
+    # 签名基于所有 menu 节点（含废弃旧节点），确保旧分组 key 存在时触发重建清理
+    menu_all = [r for r in existing if r.type == "menu"]
+    sig_now = tuple(sorted((r.key, r.name or "") for r in menu_all))
     want_names = {e[1]: e[0] for e in expected}
-    want_names.update({pnode[1]: pnode[0] for pnode in priv})
     sig_want = tuple(sorted(want_names.items()))
     if sig_now == sig_want:
         return 0  # 幂等：结构一致，不动（id 稳定）
 
     changed = 0
-    for r in managed.values():
+    priv_keys = {pnode[1] for pnode in priv}
+    stale = [r for r in menu_all] + [r for r in existing if r.type == "button" and r.key in priv_keys]
+    for r in stale:
         db.delete(r)
     db.flush()
 
