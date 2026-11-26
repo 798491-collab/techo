@@ -9,7 +9,7 @@ Techo 由 Tea 和 Echo 组成，读音 /ˈtiːkoʊ/。**Tea 呼应一杯茶的�
 ## 特性
 
 - **完全独立**：每个站点代码拷到任意目录都能独立运行，五站代码互不干扰、不共享
-- **数据隔离**：各自 FastAPI 实例、SQLite、文件缓存、上传目录、主题，配置只读本站 `site.json`
+- **数据隔离**：各自 FastAPI 实例、SQLite、文件缓存、上传目录、主题；站点配置全部读数据库（后台「系统配置」在线修改），密钥只放各站 `.env`
 - **SQLite + 文件缓存**：零外部依赖，开箱即用，契合简约轻量定位
 - **跨平台**：Windows、Mac、Linux、ARM 均可运行
 - **轻量级**：一台廉价树莓派就能满足最低运行需求
@@ -76,11 +76,12 @@ python start.py stop     # 停止
 - 数据卷：各站 `storage/`（site.db / seed.json / uploads / cache / logs / sessions / temp）在站点目录内随 hostPath 持久化
 - 仓库 `k8s/deploy-*.yaml`、`service-*.yaml`、`scripts/nginx/*.conf` 是**唯一真相源**：每次部署 `kubectl apply`，线上配置（resources / 探针 / 策略）自动与仓库对齐，不再漂移
 
-### 自动部署
+### 自动部署（Drone CI + Webhook，已上线）
 
-- Git 推送自动部署：仓库 push → Drone / Gitee WebHook → 服务器 webhook 接收器 → 自动执行部署脚本
-- 部署脚本：`apply` Service → `apply` Deployment（注入 commit 注记）→ 同步 nginx 反代并 reload → 等待就绪 → 经 ClusterIP 健康检查 → 失败自动回滚
-- 迁移顺序保证零停机：Service 先建并指向旧 Pod，nginx 切到 ClusterIP 后旧 Pod 仍可用，再滚动替换 Deployment
+- **Drone CI 界面（30080）**：`http://45.91.139.246:30080` —— 用 Gitee 账号登录，可查看每次 push 的构建记录与日志、手动触发重新构建；健康检查 `http://127.0.0.1:30080/healthz`（服务器本机）
+- **完整链路**：仓库 push → Gitee WebHook（唯一一条，指向 `http://45.91.139.246:30080/hook`）→ Drone 构建（Builds 留痕可追溯）→ `curl 127.0.0.1:8300/hook` → 服务器 webhook 接收器（nsenter 进入宿主机执行）→ `k8s/k3s-deploy.sh`
+- **部署脚本**：`apply` Service → `apply` Deployment（注入 commit 注记）→ 同步 nginx 反代并 reload → 等待就绪 → 经 ClusterIP 健康检查 → 失败自动 `rollout undo` 回滚
+- 部署日志：`scripts/k3s-deploy.log`（宿主机）+ `scripts/webhook.log`（接收器）；Drone 配置详见 `k8s/DRONE.md`
 
 ### 容器管理界面（KubePi）
 
@@ -149,7 +150,6 @@ py-site/
 │   │   ├── admin/            # 管理后台静态前端
 │   │   ├── themes/           # 主题模板 / 静态资源 / 组件宏
 │   │   ├── scripts/          # 站点脚本：run.py / start.py
-│   │   ├── site.json         # 站点配置
 │   │   ├── .env              # 密钥（首次启动自动生成）
 │   │   └── storage/          # 唯一持久化目录：SQLite / 上传 / 缓存 / 日志
 │   └── hefei/ xuzhou/ wuxi/ hangzhou/   # 各自同样结构

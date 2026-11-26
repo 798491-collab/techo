@@ -23,7 +23,7 @@
 | wuxi | 10.43.100.104 | 8104 |
 | hangzhou | 10.43.100.105 | 8105 |
 
-> 域名属敏感信息不入库，以服务器 nginx 反代配置与各站 `site.json` 为准。
+> 域名属敏感信息不入库，以服务器 nginx 反代配置为准；站点基础信息全部存数据库（后台「系统配置」）。
 
 Pod 不用 `hostNetwork`/`hostPort`，改由固定 ClusterIP 的 Service 暴露；nginx 反代到 ClusterIP。
 更新策略 `RollingUpdate`（`maxUnavailable: 0`）——新旧 Pod 并存、Service 平滑切流，发版全程无 502。
