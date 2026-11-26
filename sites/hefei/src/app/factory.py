@@ -6,10 +6,13 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import logging
 import mimetypes
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+logger = logging.getLogger("pysite")
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.gzip import GZipMiddleware
@@ -120,6 +123,14 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        # 新进程启动时清掉上一版本遗留的整页缓存：
+        # 磁盘 HTML 与内存 LRU 一起清，避免旧模板渲染结果被回写后继续命中。
+        removed = cache.clear_page()
+        if removed:
+            logger.info("启动清理整页缓存：删除 %d 个旧页面文件（%s）", removed, cfg.cache_path)
+        else:
+            logger.info("启动清理整页缓存：无旧页面文件（%s）", cfg.cache_path)
+
         async def publish_loop():
             while True:
                 try:

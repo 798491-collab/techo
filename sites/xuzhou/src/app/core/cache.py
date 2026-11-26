@@ -7,10 +7,13 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import logging
 import time
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Callable
+
+logger = logging.getLogger("pysite")
 
 
 class FileCache:
@@ -137,13 +140,17 @@ class FileCache:
             pass
         self._page_mem_put(key, html)
 
-    def clear_page(self) -> None:
+    def clear_page(self) -> int:
+        """清理整页缓存（内存 LRU + 磁盘 HTML），返回删除的磁盘文件数。"""
         self._page_mem.clear()
+        removed = 0
         for path in self.page_dir.glob("*.html"):
             try:
                 path.unlink(missing_ok=True)
+                removed += 1
             except BaseException:
                 pass
+        return removed
 
     def remember(self, key: str, factory: Callable[[], Any], ttl: int | None = None) -> Any:
         cached = self.get(key)
