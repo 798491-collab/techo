@@ -189,7 +189,8 @@ if [ "$FAILED" -eq 0 ]; then
     ip="10.43.100.$octet"
     port=$((8100 + octet - 100))
     octet=$((octet + 1))
-    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$ip:$port/")
+    # curl 连接被拒（滚动更新瞬间）不应中止脚本：失败记 000，由下方统一判失败并回滚
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$ip:$port/" 2>/dev/null || echo 000)
     if [ "$code" != "200" ]; then
       log "健康校验失败 $s (ClusterIP $ip:$port) HTTP=$code"
       FAILED=1
