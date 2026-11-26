@@ -67,9 +67,15 @@ PY
 if [ "$NEED_INSTALL" = "1" ]; then
   log "依赖缺失/版本不符，按 requirements.txt 重装 site-packages..."
   rm -rf "$SP" && mkdir -p "$SP"
-  pip3 install --no-cache-dir --target="$SP" -r "$REQ" >>"$LOG" 2>&1 \
-    && log "依赖重装完成（$(ls "$SP" | wc -l) 项）" \
-    || { log "错误：依赖重装失败，中止部署"; exit 1; }
+  # 默认源偶发卡死：先试清华镜像（60s 超时、3 次重试），失败再回退官方源
+  if ! pip3 install --no-cache-dir --timeout 60 --retries 3 \
+      -i https://pypi.tuna.tsinghua.edu.cn/simple --target="$SP" -r "$REQ" >>"$LOG" 2>&1; then
+    log "镜像源安装失败，回退官方源重试..."
+    rm -rf "$SP" && mkdir -p "$SP"
+    pip3 install --no-cache-dir --timeout 60 --retries 3 --target="$SP" -r "$REQ" >>"$LOG" 2>&1 \
+      || { log "错误：依赖重装失败，中止部署"; exit 1; }
+  fi
+  log "依赖重装完成（$(ls "$SP" | wc -l) 项）"
 fi
 
 # 2. 数据卷就绪检查（轻量：只确认五站数据库存在且非空，防止仓库/目录结构异常）
