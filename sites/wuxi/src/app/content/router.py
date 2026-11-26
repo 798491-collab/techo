@@ -350,7 +350,7 @@ async def menu(request: Request, username: str = Depends(current_admin)):
 
 # ---------------- 仪表盘 ----------------
 @router.get("/dashboard")
-async def dashboard(request: Request, db: Session = Depends(get_db)):
+async def dashboard(request: Request, db: Session = Depends(get_db), username: str = Depends(current_admin)):
     cfg, _, _ = ctx(request)
     def count(model, *conds):
         stmt = select(func.count()).select_from(model)
