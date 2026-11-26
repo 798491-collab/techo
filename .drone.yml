@@ -1,14 +1,23 @@
 # ============================================================
-# Drone CI 流水线
-# 触发：在 Drone Web 界面点 "Run pipeline" —— 等价于 Jenkins 的 Build Now
+# Drone CI 流水线（唯一部署入口）
+# 触发：
+#   1) git push → Gitee WebHook → Drone :30080/hook → 自动 build
+#   2) Drone Web 界面点 "Run pipeline" —— 等价于 Jenkins 的 Build Now
 # 动作：调用宿主机 webhook-receiver(8300)，复用已验证的部署链路：
 #       webhook → nsenter → 复制脚本到 /tmp → k8s-deploy.sh（含健康检查/回滚）
 # 运行器：exec runner（直接在宿主机执行，无需 Docker、无需 privileged）
-# 注意：git push 自动部署仍走原来的 Gitee WebHook，与本流水线互不干扰
+# 安全：入站 Gitee 推送由本仓库 repo.Signer 验签（激活仓库时 Drone 自动生成，
+#       并已写入 Gitee webhook 密码），无需 DRONE_WEBHOOK_SECRET（那是出站系统 webhook 用的）
+# 注意：8300 接收器必须保留 —— 它就是本流水线调用的下游部署执行器，删了 Drone 也部署不了
 # ============================================================
 kind: pipeline
 type: exec
 name: deploy-pysite
+
+# 只对 push 触发（Drone 手动点 Run pipeline 也产生 push 事件），避免 PR 触发生产部署
+trigger:
+  event:
+    - push
 
 # 代码已在宿主机 /www/wwwroot/pysite，无需 clone；
 # 同时规避 exec runner 无法向私有仓库注入 git credential 的已知限制
@@ -23,7 +32,7 @@ steps:
         LOG=/www/wwwroot/pysite/scripts/k3s-deploy.log
         # exec runner 跑在宿主机，直接读已 gitignore 的 token 文件，无需 Drone secret
         TOKEN=$(tr -d '\r\n' < /www/wwwroot/pysite/k8s/secrets/webhook-token.txt)
-        echo "===== 手动部署 $(date '+%F %T') ====="
+        echo "===== 部署 $(date '+%F %T') [触发: $DRONE_BUILD_EVENT] ====="
         echo "分支 $DRONE_BRANCH / 提交 ${DRONE_COMMIT_SHA:0:8} / 触发方式 $DRONE_BUILD_EVENT"
         BEFORE=$(wc -l < "$LOG" 2>/dev/null || echo 0)
         curl -fsS "http://127.0.0.1:8300/hook?token=$TOKEN"

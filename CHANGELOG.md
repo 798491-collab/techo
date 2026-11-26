@@ -8,7 +8,17 @@
 
 ---
 
-## v2.3.1 — 2026-11-26（当前）
+## v2.3.2 — 2026-11-26（当前）
+
+### 变更
+- **CI 收口为 Drone 单一入口**：Gitee 仓库删除直连 `:8300/hook` 的旧 WebHook，push 统一由 Drone `:30080/hook` 接收 → 自动 build → curl 8300 → `k3s-deploy.sh`。8300 接收器服务保留（是 Drone 的下游执行器，不可删）。
+- `.drone.yml` 增加 `trigger: event: [push]`（手动 Run pipeline 也产生 push 事件），避免 PR 事件触发生产部署；日志标记改为带触发方式。
+- `k8s/DRONE.md` 更新为「手动 + push 自动」双入口架构说明，并补充 WebHook 验签机制说明。
+
+### 决策记录
+- **不配置 `DRONE_WEBHOOK_SECRET`**：Drone 对入站 Gitee 推送的验签使用每仓库独立的 `repo.Signer`（激活仓库时自动生成并写入 Gitee WebHook 密码，当前 `techo` 已生效）；`DRONE_WEBHOOK_SECRET` 只用于 Drone 出站系统 WebHook，对入站链路无效。依据 `go-scm/scm/driver/gitee/webhook.go` 的 `Parse()`。
+
+## v2.3.1 — 2026-11-26
 
 ### 修复
 - **模板环境缓存失效（五站）**：`app/pages/render.py` 的 `cfg_root_env()` 只从 `_ENV` 读取却从未写回，且 `register_env()` 在全项目无调用点，导致每次整页缓存未命中都会重新 `build_env()` 并重新编译全部 Jinja 模板。改为构建后写回 `_ENV[key]`（按 站点 + 主题 维度缓存，进程内常驻）。
