@@ -45,6 +45,33 @@ for s in $SITES; do
 done
 log "数据卷就绪（5 站 site.db 存在且非空）"
 
+# 2.1 统一默认 favicon：仓库 logo.svg -> 各站 uploads/site-logo.svg（数据卷，git 不触碰）
+#     并把 setting.site_favicon 指向它；只在值不同时写库，避免无谓变更
+if [ -s "$REPO/logo.svg" ]; then
+  for s in $SITES; do
+    mkdir -p "sites/$s/storage/uploads"
+    cp -f "$REPO/logo.svg" "sites/$s/storage/uploads/site-logo.svg"
+    chmod 644 "sites/$s/storage/uploads/site-logo.svg"
+    python3 - "$s" <<'PY' || true
+import sqlite3, sys
+site = sys.argv[1]
+db = f"sites/{site}/storage/site.db"
+want = "/uploads/site-logo.svg"
+try:
+    conn = sqlite3.connect(db, timeout=10)
+    row = conn.execute("select value from setting where key='site_favicon'").fetchone()
+    if row is None:
+        conn.execute("insert into setting(key,value) values('site_favicon',?)", (want,))
+    elif row[0] != want:
+        conn.execute("update setting set value=? where key='site_favicon'", (want,))
+    conn.commit(); conn.close()
+except Exception:
+    pass
+PY
+  done
+  log "默认 favicon 已同步（仓库 logo.svg -> 五站 uploads/site-logo.svg）"
+fi
+
 # 3. 发版：把 commit + 时间写入 Pod 模板注记（触发一次滚动更新 = 一个新修订版本）
 #    KubePi 的 Deployment「修订历史」里即可看到每次发版的版本号与时间，并支持一键回滚
 SUBJ=$(git log -1 --format='%s' "$NEW" | sed 's/["\\]/ /g')
