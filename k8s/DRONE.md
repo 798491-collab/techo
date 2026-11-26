@@ -73,6 +73,8 @@ sudo bash k8s/install-drone.sh
 3. Builds 页点 **Run pipeline**，分支选 `main` → **Run**；这就是手动 Build Now 按钮；
 4. 实时日志里能看到「已提交到部署队列」和部署结果。
 
+> ⚠️ **仓库显示名必须与 Drone 库里的 `repo_name` 完全一致（本项目是 `techo`）**。Gitee 的 webhook payload 里 `repository.name` 用的是**显示名**（当初叫 `Techo一杯茶轻量自托管站群CMS`），而 Drone 的 Gitee 驱动用 `name` 查库（激活时却按 `path` 存）——两者不一致时 push 会返回 `{"message":"Cannot find repository"}` 且不产生 build。2026-11-26 已把 Gitee 显示名改为 `techo`（路径/clone 地址不变），push 验证通过。若日后改名，务必同步 Drone 库里的 `repos.repo_name`。
+
 ### 5. push 自动触发（当前状态：已配置）
 
 Gitee 仓库 `donghaichen/techo` → 管理 → WebHooks，当前只应保留**一条**：
@@ -102,6 +104,8 @@ curl -fsS http://127.0.0.1:30080/healthz               # 健康检查
 | Builds 页显示 `no runners available` | runner 没连上：`tail /var/log/drone-runner-exec/log.txt`，核对 `DRONE_RPC_SECRET` 与 server Secret 一致 |
 | 点运行后日志卡在「已提交队列」 | 检查 `tail -f scripts/k3s-deploy.log`，多半是 webhook token 文件或 8300 接收器问题 |
 | Gitee 仓库列表为空 | OAuth 应用权限不足，或该仓库不属于登录账号 |
+| Gitee WebHook 测试返回 `{"message":"Cannot find repository"}`，且 Builds 无新记录 | 仓库**显示名**与 Drone 库 `repos.repo_name` 不一致（Gitee payload 用 `name` 查库，Drone 按 `path` 存）。核对 `GET https://gitee.com/api/v5/repos/donghaichen/techo` 的 `name` 是否等于 `techo`；不等则 PATCH 改名 `{"name":"techo"}` 或改库 `repo_name`。2026-11-26 已修复 |
+| Builds 有记录但一直 `running`/无 runner 接单 | exec runner 启动初期可能短暂连不上 30080（Pod 尚未就绪），看 `journalctl -u drone-runner-exec`，出现 `successfully pinged` 即恢复；若持续失败核对 `DRONE_RPC_SECRET` |
 
 ## 与 Gitee Go 的关系
 

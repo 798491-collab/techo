@@ -8,7 +8,17 @@
 
 ---
 
-## v2.3.2 — 2026-11-26（当前）
+## v2.3.3 — 2026-11-26（当前）
+
+### 修复
+- **Drone push 自动触发失效（`Cannot find repository`）**：Gitee 仓库显示名为中文 `Techo一杯茶轻量自托管站群CMS`，而 Drone 库 `repos.repo_name` 存的是路径 `techo`。Gitee webhook payload 的 `repository.name` 用显示名、Drone 的 Gitee 驱动据此查库（`convertHookRepository` 里 `Name: from.Name`），两者不匹配导致 push 返回 `Cannot find repository` 且不产生 build。抓包对比 payload 确认后，通过 Gitee API `PATCH /repos/donghaichen/techo {"name":"techo"}` 把**显示名改为 `techo`**（路径与 clone 地址不变）。验证：push 后 Drone 产生 `build_id=1`（event=push，46 秒 success），部署日志显示五站滚动更新 + 健康校验全 200。
+- **确认 webhook 现状**：Gitee 仓库当前仅剩一条 WebHook（`:30080/hook`，Drone 的），旧的 `:8300/hook` 链路已不存在，`DRONE_WEBHOOK_SECRET` 依旧无需配置（见 v2.3.2 决策）。
+- `k8s/DRONE.md` 补充「显示名必须与 `repo_name` 一致」的警告与对应排障条目。
+
+### 说明
+- 验证过程中产生两个空提交（`a96d669`、`b181612`，均为 `chore:` 验证 push 触发），无代码改动。
+
+## v2.3.2 — 2026-11-26
 
 ### 变更
 - **CI 收口为 Drone 单一入口**：Gitee 仓库删除直连 `:8300/hook` 的旧 WebHook，push 统一由 Drone `:30080/hook` 接收 → 自动 build → curl 8300 → `k3s-deploy.sh`。8300 接收器服务保留（是 Drone 的下游执行器，不可删）。
