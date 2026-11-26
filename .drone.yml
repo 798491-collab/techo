@@ -49,10 +49,15 @@ steps:
           && echo "五站源码编译校验通过"
         rm -rf /tmp/ci-check
         # 校验通过 → 自动 promote 到 production（写入 Deployments 记录并触发生产构建）
+        # 注：exec runner 不注入 DRONE_SERVER 等部分变量，runner 又跑在宿主机上，
+        #     直接用本机地址并回退仓库名称
         TOKEN=$(tr -d '\r\n' < /www/wwwroot/pysite/k8s/secrets/drone-token.txt)
-        echo "晋升生产环境... server=$DRONE_SERVER ns=$DRONE_REPO_NAMESPACE name=$DRONE_REPO_NAME build=$DRONE_BUILD_NUMBER"
+        SERVER="${DRONE_SERVER:-http://127.0.0.1:30080}"
+        NS="${DRONE_REPO_NAMESPACE:-donghaichen}"
+        NAME="${DRONE_REPO_NAME:-techo}"
+        echo "晋升生产环境... server=$SERVER ns=$NS name=$NAME build=$DRONE_BUILD_NUMBER"
         RESP=$(curl -fsS -X POST -H "Authorization: Bearer $TOKEN" \
-          "$DRONE_SERVER/api/repos/$DRONE_REPO_NAMESPACE/$DRONE_REPO_NAME/builds/$DRONE_BUILD_NUMBER/promote?target=production")
+          "$SERVER/api/repos/$NS/$NAME/builds/$DRONE_BUILD_NUMBER/promote?target=production")
         echo "$RESP" | head -c 300
         echo
         echo "已创建生产构建"
