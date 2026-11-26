@@ -317,7 +317,8 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
     @app.get("/favicon.ico", include_in_schema=False)
     async def favicon():
         base = theme_static_dir(cfg, app.state.theme_name)
-        for name in ("img/favicon.ico", "img/favicon.svg", "favicon.ico"):
+        # 默认 favicon 统一为仓库根目录 logo.svg 同步下来的 img/favicon.svg
+        for name in ("img/favicon.svg", "img/favicon.ico", "favicon.ico"):
             if (base / name).is_file():
                 return RedirectResponse(url=f"/theme-assets/{name}", status_code=302)
         return Response(status_code=404)

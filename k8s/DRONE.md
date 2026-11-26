@@ -28,10 +28,13 @@ Gitee → 设置 → 第三方应用 → 创建应用：
 
 | 字段 | 值 |
 |---|---|
-| 应用主页 | `http://<你的CI域名>` |
-| 回调地址 | `http://<你的CI域名>/login` |
+| 应用主页 | `http://45.91.139.246:30080`（须与 `DRONE_SERVER_HOST` 完全一致） |
+| 回调地址 | `http://45.91.139.246:30080/login` |
 
 记下 **Client ID** 和 **Client Secret**。
+
+> 当前服务器已按上面这对地址完成配置（2026-11-26），Gitee OAuth 已生效；
+> 若改用域名，需同步修改 Secret 里的 `DRONE_SERVER_HOST` 并重启 server。
 
 ### 2. nginx 反代
 
