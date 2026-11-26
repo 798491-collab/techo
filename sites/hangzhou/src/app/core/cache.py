@@ -4,9 +4,11 @@
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import time
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Callable
 
@@ -19,6 +21,10 @@ class FileCache:
         # 前台整页静态缓存（独立目录，clear 时一并清理）
         self.page_dir = self.cache_dir / "pages"
         self.page_dir.mkdir(parents=True, exist_ok=True)
+        # 热点整页内存缓存：key -> (原始 HTML, 预压缩 gzip 字节)。
+        # 命中时零磁盘 IO、零 gzip CPU —— 单 worker + GIL 下这是最有效的提速点。
+        self._page_mem: OrderedDict[str, tuple[str, bytes]] = OrderedDict()
+        self._page_mem_max = 96  # 每站约 96 × 27KB ≈ 2.6MB，五站合计 ~13MB
 
     def _file(self, key: str) -> Path:
         safe = hashlib.md5(key.encode("utf-8")).hexdigest()
@@ -88,21 +94,51 @@ class FileCache:
         return self.page_dir / f"{safe}.html"
 
     def get_page(self, key: str) -> str | None:
+        hit = self._page_mem.get(key)
+        if hit is not None:
+            self._page_mem.move_to_end(key)
+            return hit[0]
         path = self._page_file(key)
         if not path.exists():
             return None
         try:
-            return path.read_text(encoding="utf-8")
+            html = path.read_text(encoding="utf-8")
         except (ValueError, OSError):
             return None
+        self._page_mem_put(key, html)
+        return html
+
+    def get_page_payload(self, key: str) -> tuple[str, bytes] | None:
+        """返回 (原始 HTML, 预压缩 gzip 字节)；命中内存时零磁盘零压缩。"""
+        hit = self._page_mem.get(key)
+        if hit is not None:
+            self._page_mem.move_to_end(key)
+            return hit
+        path = self._page_file(key)
+        if not path.exists():
+            return None
+        try:
+            html = path.read_text(encoding="utf-8")
+        except (ValueError, OSError):
+            return None
+        self._page_mem_put(key, html)
+        return self._page_mem[key]
+
+    def _page_mem_put(self, key: str, html: str) -> None:
+        self._page_mem[key] = (html, gzip.compress(html.encode("utf-8"), compresslevel=1))
+        self._page_mem.move_to_end(key)
+        if len(self._page_mem) > self._page_mem_max:
+            self._page_mem.popitem(last=False)
 
     def set_page(self, key: str, html: str) -> None:
         try:
             self._page_file(key).write_text(html, encoding="utf-8")
         except BaseException:
             pass
+        self._page_mem_put(key, html)
 
     def clear_page(self) -> None:
+        self._page_mem.clear()
         for path in self.page_dir.glob("*.html"):
             try:
                 path.unlink(missing_ok=True)

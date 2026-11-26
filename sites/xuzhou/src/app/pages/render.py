@@ -239,9 +239,14 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
         use_page_cache = (not qp.get("guest_book")) and template != "search.html"
         cache_key = "oss34:" + request.url.path + ("?" + urlencode(sorted(qp.multi_items())) if qp else "")
         if use_page_cache:
-            cached_html = cache.get_page(cache_key)
-            if cached_html is not None:
-                return HTMLResponse(cached_html)
+            hit = cache.get_page_payload(cache_key)
+            if hit is not None:
+                raw_html, gz_html = hit
+                if "gzip" in request.headers.get("accept-encoding", "").lower():
+                    from fastapi.responses import Response
+                    return Response(content=gz_html, media_type="text/html",
+                                    headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
+                return HTMLResponse(raw_html)
 
         # 栏目 slug 映射仅在需要渲染（缓存未命中）时绑定，缓存命中路径零 DB
         _bind_category_slugs(db)
