@@ -82,3 +82,6 @@ k8s/secrets/
 
 # KubePi 数据目录（挂载宿主机，不入库）
 kubepi-data/
+
+# Drone CI 数据目录（SQLite + runner 状态，挂载宿主机，不入库）
+k8s/drone-data/

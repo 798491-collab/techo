@@ -59,7 +59,11 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
 ## 自动部署（K3s 自建 webhook 接收器）
 
 仓库 `main` 分支 push → Gitee WebHook → **K3s 内 webhook 接收器**（`pysite/webhook-receiver`，
-端口 8300）→ nsenter 进宿主机执行 `/root/k3s-deploy.sh`：
+端口 8300）→ nsenter 进宿主机，把仓库内 `k8s/k3s-deploy.sh` 复制到 `/tmp` 再执行：
+
+> 部署脚本只有仓库 `k8s/k3s-deploy.sh` 一份，服务器 `/root` 下无需再放副本。
+> 复制到 `/tmp` 执行是因为脚本内部会 `git reset --hard`，直接跑仓库里的那份会在发版时
+> 把正在运行的脚本自身覆盖，导致 bash 执行错乱。
 
 - **触发地址**（配置在 Gitee 仓库 → 管理 → WebHooks）：
   `http://<服务器IP>:8300/hook?token=<WebHook Token>`
@@ -95,7 +99,16 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
 历史里点回滚）。注意：代码经 hostPath 挂载，回滚 Pod 的同时需 `git reset --hard <旧 commit>`
 同步代码；部署脚本的自动回滚已包含这两步。
 
-**脚本在 `/root/`（仓库外），不会被 git pull 覆盖。** 仓库内的 `k8s-deploy.sh` 是源备份。
+**脚本只有仓库内 `k8s/k3s-deploy.sh` 一份**（`/root/` 无需副本）：调用方先复制到 `/tmp` 再执行，既不会被 git pull 覆盖自身，也不污染系统目录。
+
+## 手动构建按钮（Drone CI，可选）
+
+- 与 push 自动部署并列，提供一个 Jenkins 风格的 **Run pipeline** 按钮：`.drone.yml` 只调用
+  同一个 webhook 接收器（8300），因此走的是上面这套已验证的部署/回滚逻辑；
+- Server：`drone/drone:2` 跑在 K3s（SQLite hostPath `k8s/drone-data/`，limits 128Mi）；
+  Runner：`drone-runner-exec` 二进制跑在宿主机（无需 Docker），常驻内存可忽略；
+- 安装、Gitee OAuth、反代与排障的完整步骤见 **`k8s/DRONE.md`**；
+- 与 Gitee Go 的 `.workflow/ci.yml` 二选一即可，两者都只是往同一个 webhook 发触发。
 
 ## 常用命令
 

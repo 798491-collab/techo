@@ -233,8 +233,6 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
                 template = "list.html"
         elif kind == "detail":
             template = "detail.html"
-        _bind_category_slugs(db)
-
         # 整页静态缓存：页面级 key = 路径 + 排序后的查询串；动态页面跳过。
         # oss2 让写死 200×200 的页面缓存失效，改由各主题按样式尺寸出图。
         qp = request.query_params
@@ -244,6 +242,9 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
             cached_html = cache.get_page(cache_key)
             if cached_html is not None:
                 return HTMLResponse(cached_html)
+
+        # 栏目 slug 映射仅在需要渲染（缓存未命中）时绑定，缓存命中路径零 DB
+        _bind_category_slugs(db)
 
         # 需求：URL 带 get 参数 guest_book 时渲染「在线留言」表单填写页（ajax 提交）
         if qp.get("guest_book"):

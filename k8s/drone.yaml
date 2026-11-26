@@ -1,0 +1,69 @@
+# Drone CI Server —— 跑在现有极简 K3s（containerd 拉镜像，无需安装 Docker）
+# 前置：先执行 k8s/install-drone.sh 创建 drone-secrets，否则 Pod 因缺失环境变量起不来
+# 数据：SQLite 落在 hostPath /www/wwwroot/pysite/k8s/drone-data（已 gitignore）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drone-server
+  namespace: pysite
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # SQLite 单实例，禁止滚动多副本同时写库
+  selector:
+    matchLabels:
+      app: drone-server
+  template:
+    metadata:
+      labels:
+        app: drone-server
+    spec:
+      containers:
+        - name: drone-server
+          image: drone/drone:2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              hostPort: 30080 # 宿主机 exec runner 经 127.0.0.1:30080 连接
+          envFrom:
+            - secretRef:
+                name: drone-secrets
+          env:
+            - name: DRONE_DATABASE_DRIVER
+              value: sqlite3
+            - name: DRONE_DATABASE_DATASOURCE
+              value: /data/database.sqlite
+            - name: DRONE_GITEE_SERVER
+              value: https://gitee.com
+            - name: DRONE_SERVER_PROTO
+              value: http
+            - name: TZ
+              value: Asia/Shanghai
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: data
+          hostPath:
+            path: /www/wwwroot/pysite/k8s/drone-data
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drone-server
+  namespace: pysite
+spec:
+  selector:
+    app: drone-server
+  ports:
+    - name: http
+      port: 30080
+      targetPort: 80

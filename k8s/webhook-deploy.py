@@ -2,8 +2,10 @@
 """Gitee push -> K3s 自动部署接收器。
 
 纯 Python 标准库实现（零第三方依赖），跑在 python:3.10-slim 容器里。
-收到合法触发后，通过 nsenter 进入宿主机命名空间执行 /root/k3s-deploy.sh，
+收到合法触发后，通过 nsenter 进入宿主机命名空间执行仓库内的 k8s/k3s-deploy.sh，
 复用宿主机的 git / kubectl 环境，容器内无需安装任何工具。
+脚本先复制到 /tmp 再运行：部署脚本内部有 git reset --hard，直接跑仓库里的那份
+会在发版时覆盖正在执行的脚本自身（bash 边读边执行会错乱）。
 """
 import os
 import subprocess
@@ -13,9 +15,16 @@ from pathlib import Path
 
 TOKEN = os.environ.get("WEBHOOK_TOKEN", "")
 LOG_FILE = Path("/www/wwwroot/pysite/scripts/webhook.log")
+# 在宿主机执行：把仓库脚本复制到临时文件再 bash，避免 git reset 覆盖自身
+DEPLOY_SHELL = (
+    'run=$(mktemp /tmp/pysite-deploy-XXXXXX.sh) || exit 1; '
+    'cp /www/wwwroot/pysite/k8s/k3s-deploy.sh "$run" || exit 1; '
+    'trap \'rm -f "$run"\' EXIT; '
+    'bash "$run"'
+)
 DEPLOY_CMD = [
     "nsenter", "-t", "1", "-m", "-u", "-i", "-n", "-p", "--",
-    "bash", "/root/k3s-deploy.sh",
+    "bash", "-c", DEPLOY_SHELL,
 ]
 
 

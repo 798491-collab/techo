@@ -134,7 +134,7 @@ python tests/test_smoke.py      # 需先启动服务；或设置 BASE_URL 指向
 
 - 独立 Deployment：`pysite/hefei`（namespace `pysite`），hostNetwork 占用端口 8102，
   站点目录整体挂载容器 `/app`，`storage/` 随 hostPath 持久化、部署永不覆盖；
-- **git push 即自动部署**：Gitee WebHook → 服务器 webhook-receiver（8300）→ `/root/k3s-deploy.sh`
+- **git push 即自动部署**：Gitee WebHook → 服务器 webhook-receiver（8300）→ 仓库内 `k8s/k3s-deploy.sh`（先复制到 /tmp 再执行，避免 git reset 覆盖自身）
   → 数据卷校验 → 滚动重启 → HTTP 健康检查 → 失败自动回滚；
 - 常用运维（SSH 到服务器）：
   ```bash

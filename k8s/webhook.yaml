@@ -2,7 +2,8 @@
 # 触发地址：http://<服务器IP>:8300/hook?token=<WEBHOOK_TOKEN>
 # 注意：WEBHOOK_TOKEN 真实值只保存在服务器本地，本文件为占位符；
 #       在服务器上填入真实值后再 apply + rollout restart（见 k8s/README.md）
-# 原理：容器内 nsenter 进入宿主机执行 /root/k3s-deploy.sh（复用宿主机 git/kubectl）
+# 原理：容器内 nsenter 进入宿主机，把仓库内 k8s/k3s-deploy.sh 复制到 /tmp 再执行
+#（复用宿主机 git/kubectl；复制执行是为避免脚本内 git reset 覆盖自身）
 apiVersion: apps/v1
 kind: Deployment
 metadata:

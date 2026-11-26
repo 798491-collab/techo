@@ -1,0 +1,39 @@
+# ============================================================
+# Drone CI 流水线
+# 触发：在 Drone Web 界面点 "Run pipeline" —— 等价于 Jenkins 的 Build Now
+# 动作：调用宿主机 webhook-receiver(8300)，复用已验证的部署链路：
+#       webhook → nsenter → 复制脚本到 /tmp → k8s-deploy.sh（含健康检查/回滚）
+# 运行器：exec runner（直接在宿主机执行，无需 Docker、无需 privileged）
+# 注意：git push 自动部署仍走原来的 Gitee WebHook，与本流水线互不干扰
+# ============================================================
+kind: pipeline
+type: exec
+name: deploy-pysite
+
+# 代码已在宿主机 /www/wwwroot/pysite，无需 clone；
+# 同时规避 exec runner 无法向私有仓库注入 git credential 的已知限制
+clone:
+  skip: true
+
+steps:
+  - name: 触发五站部署
+    commands:
+      - |
+        set -e
+        LOG=/www/wwwroot/pysite/scripts/k3s-deploy.log
+        # exec runner 跑在宿主机，直接读已 gitignore 的 token 文件，无需 Drone secret
+        TOKEN=$(tr -d '\r\n' < /www/wwwroot/pysite/k8s/secrets/webhook-token.txt)
+        echo "===== 手动部署 $(date '+%F %T') ====="
+        echo "分支 $DRONE_BRANCH / 提交 ${DRONE_COMMIT_SHA:0:8} / 触发方式 $DRONE_BUILD_EVENT"
+        BEFORE=$(wc -l < "$LOG" 2>/dev/null || echo 0)
+        curl -fsS "http://127.0.0.1:8300/hook?token=$TOKEN"
+        echo "已提交到部署队列，等待结果（最长 180s）..."
+        for i in $(seq 1 180); do
+          if tail -n +$((BEFORE+1)) "$LOG" 2>/dev/null | grep -qE '部署完成|回滚完成|另一个部署正在进行'; then
+            tail -n +$((BEFORE+1)) "$LOG"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "等待超时，请手动查看: tail -f $LOG"
+        exit 1

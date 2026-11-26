@@ -151,7 +151,7 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
 
     app = FastAPI(title=cfg.key or "PySite", version="2.0", lifespan=lifespan)
     # HTML/CSS/JS/JSON 压缩传输（nginx 只压它自己认得的类型，代理响应需要应用层兜底）
-    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=6)
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=1)
     app.state.cfg = cfg
     app.state.db = db
     app.state.cache = cache
@@ -239,7 +239,7 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
     mount_package_routers(app)
 
     @app.get("/uploads/{path:path}", include_in_schema=False)
-    async def uploads(request: Request, path: str):
+    def uploads(request: Request, path: str):
         target = _safe_file(cfg.uploads_path, path)
         if target is None:
             return Response("Not Found", status_code=404)
@@ -254,7 +254,7 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
         return _file(request, target, "public, max-age=2592000")
 
     @app.get("/theme-assets/{path:path}", include_in_schema=False)
-    async def theme_assets(request: Request, path: str):
+    def theme_assets(request: Request, path: str):
         base = theme_static_dir(cfg, request.app.state.theme_name)
         target = _safe_file(base, path)
         if target is None:
@@ -262,7 +262,7 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
         return _file(request, target, "public, max-age=31536000, immutable")
 
     @app.get("/theme-libs/{path:path}", include_in_schema=False)
-    async def theme_libs(request: Request, path: str):
+    def theme_libs(request: Request, path: str):
         target = _safe_file(THEMES_ROOT / "_libs", path)
         if target is None:
             return Response("Not Found", status_code=404)

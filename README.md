@@ -80,15 +80,22 @@ Techo 由 Tea 和 Echo 组成，读音 /ˈtiːkoʊ/。**Tea 呼应一杯茶的�
 ### Git 推送自动部署（已生效）
 
 - 仓库：`git@gitee.com:donghaichen/py‑site.git`（分支 `main`；服务器部署公钥只读 pull，无法 push，推送在开发机执行，走 HTTPS 凭据）；
-- **触发链路**：`git push` → Gitee WebHook → 服务器 K3s 内 `webhook‑receiver` Pod（端口 8300，纯标准库，limits 64Mi）→ nsenter 进宿主机执行 `/root/k3s‑deploy.sh`；
+- **触发链路**：`git push` → Gitee WebHook → 服务器 K3s 内 `webhook‑receiver` Pod（端口 8300，纯标准库，limits 64Mi）→ nsenter 进宿主机，把仓库内 `k8s/k3s‑deploy.sh` 复制到 `/tmp` 再执行；
 - **WebHook 地址**（Gitee 仓库 → 管理 → WebHooks，Push 事件）：`http://<服务器IP>:8300/hook?token=<WebHook Token>`；
-- 部署脚本位于仓库外 `/root/k3s‑deploy.sh`（不会被 `git reset` 覆盖；源码备份在仓库 `k8s/k3s‑deploy.sh`），流程：
+- **部署脚本只有仓库内 `k8s/k3s‑deploy.sh` 一份**（服务器 `/root` 无需副本）：调用方先复制到 `/tmp` 再执行，避免脚本内 `git reset --hard` 覆盖正在运行的自身；流程：
 0. **凭据自动配置**：WebHook Token、KubePi 管理员密码、五站后台密码缺失时随机生成，统一写入服务器 `k8s/secrets/credentials.txt`（类似 MySQL 安装后打印临时密码）；
   1. `git fetch + reset --hard` 更新代码（`storage/` 被 gitignore，不受影响）；
   2. **数据卷就绪检查**：五站 `sites/<站点>/storage/site.db` 存在且非空，异常立即中止；
   3. **发版记录**：把 commit、提交说明、发版时间写入五站 Deployment 修订历史（KubePi「部署 → 修订历史」可查看每次发版内容并一键回滚），并滚动更新生效；
   4. 健康检查：五站 HTTP 200，失败自动 `rollout undo` 回滚（并记入发版清单）。
 - **git push 即部署，无需人工确认**；部署日志 `scripts/k3s‑deploy.log`，webhook 日志 `scripts/webhook.log`，发版清单 `scripts/release‑history.txt`。
+
+### 手动构建按钮（Drone CI，可选）
+
+- 在 KubePi 之外并列提供 Jenkins 风格的 **Run pipeline** 按钮：**点一下 → 触发现有 webhook 部署链路**（不动 `git push` 自动部署）；
+- Server 跑在 K3s（`drone/drone:2`，内置 SQLite，limits 128Mi），Runner 用宿主机二进制（`drone-runner-exec`，无需 Docker），两步都低内存；
+- 配置清单 `k8s/drone.yaml`、流水线 `.drone.yml`、一键安装 `k8s/install-drone.sh`、反代模板 `scripts/nginx/drone.conf.example`；
+- **完整安装与排障见 `k8s/DRONE.md`**（需先在 Gitee 建 OAuth 应用并配 CI 域名反代）。
 
 ### 容器管理界面（KubePi）
 
@@ -127,6 +134,7 @@ tail -f /www/wwwroot/pysite/scripts/k3s‑deploy.log       # 部署日志
 | 入口 | 地址 | 认证 | 说明 |
 | --- | --- | --- | --- |
 | **KubePi**（容器管理界面，中文） | `http://<服务器IP>:10000/` | `admin` + 随机密码（部署时自动生成并改掉默认值，见服务器 `k8s/secrets/credentials.txt`） | 现代化中文面板，可视化管理 Pod / Deployment / 日志 / 终端 / 重启；集群首次使用需导入 |
+| **Drone CI**（手动构建按钮） | `http://<你的CI域名>/` | Gitee 账号登录 | 点 Run pipeline = Jenkins 的 Build Now；走已验证的 webhook 部署链路，详见 `k8s/DRONE.md` |
 | **Webhook 接收器健康检查** | `http://<服务器IP>:8300/healthz` | 无（token 校验只在 `/hook` 触发时） | 返回 200 = 自动部署链路正常；WebHook Token 同样由 provision 脚本自动生成（`k8s/secrets/webhook‑token.txt`） |
 | **SSH 运维（kubectl）** | `ssh root@<服务器IP>` | SSH 凭据 | 登录后 `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml` 再执行 kubectl |
 | K3s API Server | `https://<服务器IP>:6443` | kubeconfig 客户端证书 | 仅本机 / 内网管理用，不对公网开放 |
