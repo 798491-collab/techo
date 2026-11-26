@@ -470,6 +470,7 @@
     const on=(k)=>String(s[k]??'1')!=='0';
     const capOn=(k)=>String(s[k]??'0')!=='0';
     const numVal=(k,d)=>{const v=parseInt(s[k],10);return Number.isFinite(v)?v:d;};
+    const mode=String(s.admin_ip_mode??'blacklist');
     const rule=await getPasswordRule();
     // 验证码开关：管理后台 / 用户中心，默认关闭
     const adminCap=capOn('admin_captcha'), userCap=capOn('user_captcha');
@@ -485,6 +486,21 @@
         ${ROWS.map(x=>`<div class="col-12 switch-row"><div class="switch-info"><b>${x[1]}</b><small>${x[2]}</small></div>
           <div class="field-switch"><input class="check" type="checkbox" ${on(x[0])?'checked':''} disabled>
           <label class="form-label"><span class="sw-text ${on(x[0])?'on':''}">${on(x[0])?'已开启':'已关闭'}</span></label></div></div>`).join('')}
+      </div></div>
+      <div class="card-box mt-3"><div class="p-3">
+        <h6 class="mb-3"><i class="bi bi-shield-check"></i> 后台访问防护</h6>
+        <div class="row g-3">
+          <div class="md:col-6"><label class="form-label">后台访问地址</label><input class="form-control" id="sec-admin-path" spellcheck="false" value="${esc(String(s.admin_path??'admin'))}"><div class="form-text fg-secondary">默认 admin；改为自定义值后入口变为 /自定义值（原 /admin 地址返回 404），最长 30 秒生效。忘记自定义地址需到服务器查 setting 表 admin_path。</div></div>
+          <div class="md:col-6"><label class="form-label">IP 防护模式</label>
+            <select class="form-select" id="sec-ip-mode">
+              <option value="blacklist" ${mode==='whitelist'?'':'selected'}>黑名单模式（默认）— 列表内 IP 拒绝，其余放行</option>
+              <option value="whitelist" ${mode==='whitelist'?'selected':''}>白名单模式 — 仅列表内 IP 放行（列表为空时除本机外全部拒绝）</option>
+            </select></div>
+          <div class="col-12"><label class="form-label">IP 名单（每行一个，支持 CIDR 与通配符）</label>
+            <textarea class="form-control code-field" id="sec-ip-rules" rows="5" spellcheck="false" placeholder="172.16.10.111&#10;172.16.10.0/24&#10;172.16.*">${esc(String(s.admin_ip_rules??''))}</textarea>
+            <div class="form-text fg-secondary">示例：精确 IP 172.16.10.111；网段 172.16.10.0/24；通配符 172.16.*。白名单模式放行所有来源请填 0.0.0.0/0 和 ::/0 两行。</div></div>
+        </div>
+        <div class="mt-3"><button class="btn btn-solid theme-primary btn-loading" type="button" id="sec-guard-save"><i class="bi bi-check-lg"></i> 保存访问防护</button></div>
       </div></div>
       <div class="card-box mt-3"><div class="p-3">
         <h6 class="mb-3"><i class="bi bi-clock-history"></i> 登录策略</h6>
@@ -524,6 +540,18 @@
       const res=await post('/api/admin/settings',{login_lock:String(lock),session_ttl:String(ttl)});
       btnLoading(saveNum,false);
       toast(res.msg,res.code===0?'success':'error');
+    };
+    const saveGuard=document.getElementById('sec-guard-save');
+    if(saveGuard) saveGuard.onclick=async()=>{
+      const p=document.getElementById('sec-admin-path').value.trim().replace(/^\/+|\/+$/g,'');
+      const ipMode=document.getElementById('sec-ip-mode').value;
+      const rules=document.getElementById('sec-ip-rules').value.trim();
+      if(!/^[A-Za-z0-9_-]{1,64}$/.test(p)){toast('后台访问地址仅限字母、数字、下划线、中划线（1-64 位）','error');return;}
+      if(ipMode==='whitelist' && !rules){toast('白名单模式 IP 名单为空时除本机外将全部拒绝；放行所有来源请填 0.0.0.0/0 和 ::/0。如确认继续，请先在名单中加入你当前访问的 IP','error');return;}
+      btnLoading(saveGuard,true);
+      const res=await post('/api/admin/settings',{admin_path:p,admin_ip_mode:ipMode,admin_ip_rules:rules});
+      btnLoading(saveGuard,false);
+      toast(res.msg,res.code===0?(p!=='admin'?`已保存，后台新入口 /${p}（≤30 秒生效）`:'已保存'):'error');
     };
     const bindCap=(id,key)=>{
       const box=document.getElementById(id);

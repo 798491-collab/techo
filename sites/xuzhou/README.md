@@ -1,4 +1,4 @@
-# 徐州玖硕建筑工程咨询有限公司 · 官网
+# 示例客户 C（徐州）建筑工程咨询有限公司 · 官网
 
 > 本目录是**完全独立、自包含**的站点系统：自带全套后端代码（FastAPI）、管理后台前端、主题模板、
 > 启动脚本与数据目录，把整个目录拷贝到任意机器/任意路径都能直接运行。
@@ -10,12 +10,12 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 公司 | 徐州玖硕建筑工程咨询有限公司 |
-| 域名 | `https://www.xuzhoujiushuo.com/`（服务器 nginx 反代，配置见仓库 `scripts/nginx/`） |
+| 公司 | 示例客户 C（徐州）建筑工程咨询有限公司 |
+| 域名 | `https://www.example-xz.com/（示例占位，实际域名见服务器 nginx）`（服务器 nginx 反代，配置见仓库 `scripts/nginx/`） |
 | 端口 | 8103（ClusterIP `10.43.100.103`） |
 | 前台 | http://127.0.0.1:8103/ |
 | 后台 | http://127.0.0.1:8103/admin/（建议带结尾斜杠） |
-| 线上后台 | https://www.xuzhoujiushuo.com/admin/ |
+| 线上后台 | https://www.example-xz.com/（示例占位，实际域名见服务器 nginx）admin/ |
 | 主题 | 红色政务 · 对称庄重 · 金线装饰 |
 | 后台账号 | `admin`（初始密码首次启动自动生成并打印一次，详见根 README「后台账号与密钥」） |
 
@@ -33,7 +33,7 @@
 
 - 独立 Deployment `pysite/xuzhou`（namespace `pysite`）+ 固定 ClusterIP Service（无 hostNetwork/hostPort）；
   更新策略 RollingUpdate（`maxUnavailable: 0`），发版全程无 502。
-- **git push 即自动部署**：Gitee WebHook → Drone CI 校验（`http://45.91.139.246:30080`）→ 自动 promote
+- **git push 即自动部署**：Gitee WebHook → Drone CI 校验（`http://<CI服务器IP>:30080`）→ 自动 promote
   production → 生产构建部署：服务器 webhook 接收器（8300）→ `k8s/k3s-deploy.sh`
   （apply YAML 真相源 → 注入 commit 注记 → 同步 nginx 反代并 reload → ClusterIP 健康检查 → 失败自动回滚）。
   生产部署/回滚记录见 Drone 仓库 **Deployments** 页。

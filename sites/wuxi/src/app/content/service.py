@@ -167,7 +167,7 @@ def password_valid(db: Session, pwd: str) -> bool:
 
 # ---------------- 静态资源版本号（清缓存时 +1） ----------------
 STATIC_VERSION_KEY = "static_version"
-CODE_VERSION = "20261126-admin-scroll"
+CODE_VERSION = "20261126-security-tel"
 
 
 def get_static_version(db: Session) -> str:

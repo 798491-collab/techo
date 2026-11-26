@@ -91,10 +91,11 @@
 {# ===== 右侧浮动导航 ===== #}
 <div class="vc-float-nav">
   {% if site.phone or site.mobile %}
-  <a class="vc-fn-phone" href="tel:{{ (site.phone or site.mobile) | replace(' ', '') }}">
+  {% set _tel_num = (site.phone or site.mobile) | phone_href %}
+  {% if _tel_num %}<a class="vc-fn-phone" href="tel:{{ _tel_num }}">
     <i class="bi bi-telephone-fill"></i>
     <span class="vc-fn-phone-txt">给我们拨打电话<small>{{ site.phone or site.mobile }}</small></span>
-  </a>
+  </a>{% endif %}
   {% endif %}
   {% for key, icon, label in [('wechat_qrcode','bi-wechat','微信'),('douyin_qrcode','bi-tiktok','抖音'),('weibo_qrcode','bi-sina-weibo','微博')] %}
   {% if settings.get(key) %}

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import contextvars
+import re as _re
 from datetime import datetime
 
 import json
@@ -27,6 +28,26 @@ from app.media.thumb import oss
 def _pub_visible():
     # 需求（2026-11-24）：未到发布时间的内容前台不显示（publish_at 为空视为已发布）
     return or_(Content.publish_at.is_(None), Content.publish_at <= datetime.now())
+
+
+# ---- tel: 链接净化：联系方式输入框允许保存任意文本（“宋经理15669996204”）， ----
+# ---- 页面输出时用正则抽出真实号码生成 href，显示文本保持原样。            ----
+_PHONE_PATTERNS = (
+    _re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)"),                                  # 手机号
+    _re.compile(r"(?<!\d)400[-\s]?\d{3}[-\s]?\d{4}(?!\d)"),                    # 400 热线
+    _re.compile(r"(?<!\d)0\d{2,3}[-\s]?\d{7,8}(?:[-\s]\d{1,6})?(?!\d)"),       # 固话（可带分机）
+)
+
+
+def phone_href(value) -> str:
+    """从任意联系文本中抽出第一个可拨号号码（手机/400/固话），供 tel: 使用；无号码返回空串。"""
+    if not value or not isinstance(value, str):
+        return ""
+    for pat in _PHONE_PATTERNS:
+        m = pat.search(value)
+        if m:
+            return _re.sub(r"[^\d]", "", m.group(0))
+    return ""
 
 
 PAGE_ROUTES = {
@@ -78,6 +99,7 @@ def build_env(cfg: SiteConfig, theme_key: str = "default") -> Environment:
     env.globals["url_category"] = url_category
     env.globals["url_content"] = url_content
     env.globals["oss"] = oss
+    env.filters["phone_href"] = phone_href
     return env
 
 

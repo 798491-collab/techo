@@ -50,8 +50,8 @@ Gitee → 设置 → 第三方应用 → 创建应用：
 
 | 字段 | 值 |
 |---|---|
-| 应用主页 | `http://45.91.139.246:30080`（须与 `DRONE_SERVER_HOST` 完全一致） |
-| 回调地址 | `http://45.91.139.246:30080/login` |
+| 应用主页 | `http://<CI服务器IP>:30080`（须与 `DRONE_SERVER_HOST` 完全一致） |
+| 回调地址 | `http://<CI服务器IP>:30080/login` |
 
 记下 **Client ID** 和 **Client Secret**。
 
@@ -76,7 +76,7 @@ sudo bash k8s/install-drone.sh
 
 ### 3. 首次使用
 
-1. 浏览器打开 `http://45.91.139.246:30080`（或你的 CI 域名），用 Gitee 账号登录；
+1. 浏览器打开 `http://<CI服务器IP>:30080`（或你的 CI 域名），用 Gitee 账号登录；
 2. Repos 页找到 `techo.git`，点 **Activate**（激活时 Drone 会自动在 Gitee 注册 WebHook 并写好验签密码）；
 3. Builds 页点 **Run pipeline**，分支选 `main` → **Run**；这就是手动 Build Now 按钮；
 4. 实时日志里能看到「已提交到部署队列」和部署结果。
@@ -89,11 +89,11 @@ Gitee 仓库 `donghaichen/techo` → 管理 → WebHooks，当前只应保留**�
 
 | 字段 | 值 |
 |---|---|
-| URL | `http://45.91.139.246:30080/hook` |
+| URL | `http://<CI服务器IP>:30080/hook` |
 | 事件 | Push |
 | WebHook 密码 | 留空即可——Drone 激活仓库时已用 `repo.Signer` 自动创建带密码的那条，**不要手动再建一条** |
 
-直连 `http://45.91.139.246:8300/hook?token=...` 的旧 WebHook **已删除**（2026-11-26）。所有部署统一走 Drone：push → Drone build → curl 8300 → deploy。这样每次 push 都会在 Builds 列表留下可追溯的记录。
+直连 `http://<CI服务器IP>:8300/hook?token=...` 的旧 WebHook **已删除**（2026-11-26）。所有部署统一走 Drone：push → Drone build → curl 8300 → deploy。这样每次 push 都会在 Builds 列表留下可追溯的记录。
 
 ## 验证与排障
 

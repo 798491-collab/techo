@@ -8,7 +8,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import quote
@@ -41,9 +43,17 @@ _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
 # 缩略图处理是同步 CPU + 大内存操作（uvicorn 会把同步路由放进线程池并发执行）。
 # 大图解码一张可达数十 MB，并发处理多张会打爆容器 256Mi 内存限制。
-# 用单 worker 队列串行处理：请求进队列后等待结果，同一时刻内存里只有一张待处理图。
-# 结果落磁盘缓存，命中缓存的请求不排队。
-_thumb_queue = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pysite-thumb")
+# 队列 worker 数可经环境变量 THUMB_WORKERS 调整（默认 1 串行；机器内存充裕时可调大，
+# 多图同时请求不再排队阻塞前端）。结果落磁盘缓存，命中缓存的请求不排队。
+def _queue_workers() -> int:
+    try:
+        n = int(os.getenv("THUMB_WORKERS", "1"))
+    except ValueError:
+        n = 1
+    return min(8, max(1, n))
+
+
+_thumb_queue = ThreadPoolExecutor(max_workers=_queue_workers(), thread_name_prefix="pysite-thumb")
 
 
 def with_process(url: str, process: str) -> str:
@@ -80,26 +90,43 @@ def rewrite_one(item: dict, field: str = "cover", process: str = "") -> dict:
     return copied
 
 
-def cached_process(uploads: Path, cache_dir: Path, rel: str, process: str) -> tuple[Path, str] | None:
-    """处理这一张图并返回缓存文件。已有且原图未变时直接复用。失败返回 None。"""
+def cached_process(uploads: Path, cache_dir: Path, rel: str, process: str) -> tuple[Path, str, bool] | None:
+    """处理这一张图并返回缓存文件 (路径, MIME, 是否占位图)。已有且原图未变时直接复用。
+
+    源图损坏 / 处理异常时返回占位图（而非让接口 500 或退回坏原图）。
+    """
     if Image is None:
-        return None
-    spec = _parse(process)
-    src = _under(uploads, rel)
-    if spec is None or src is None:
-        return None
-    dest, stamp_path, media = _cache_paths(cache_dir, rel, process, spec["format"])
-    token = _stamp(src)
-    if _fresh(dest, stamp_path, token):
-        return dest, media
-    # 未命中统一进单 worker 队列，排队等待处理结果；异常时返回 None（退化为原图）
+        return _placeholder(cache_dir)
     try:
+        spec = _parse(process)
+        src = _under(uploads, rel)
+        if spec is None or src is None:
+            return None
+        dest, stamp_path, media = _cache_paths(cache_dir, rel, process, spec["format"])
+        token = _stamp(src)
+        if _fresh(dest, stamp_path, token):
+            return dest, media, False
+        # 未命中统一进队列，排队等待处理结果
         return _thumb_queue.submit(_process_uncached, uploads, cache_dir, rel, process).result()
+    except Exception:
+        return _placeholder(cache_dir)
+
+
+def _placeholder(cache_dir: Path) -> tuple[Path, str, bool] | None:
+    """生成/复用灰色占位图，损坏图片与处理异常统一返回它。"""
+    try:
+        dest = cache_dir / "placeholder.png"
+        if not dest.is_file():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dest.with_suffix(".tmp")
+            Image.new("RGB", (480, 320), (238, 238, 238)).save(tmp, format="PNG")
+            tmp.replace(dest)
+        return dest, "image/png", True
     except Exception:
         return None
 
 
-def _process_uncached(uploads: Path, cache_dir: Path, rel: str, process: str) -> tuple[Path, str] | None:
+def _process_uncached(uploads: Path, cache_dir: Path, rel: str, process: str) -> tuple[Path, str, bool] | None:
     """队列工作线程内执行：处理单张未缓存图片。"""
     spec = _parse(process)
     src = _under(uploads, rel)
@@ -108,16 +135,18 @@ def _process_uncached(uploads: Path, cache_dir: Path, rel: str, process: str) ->
     dest, stamp_path, media = _cache_paths(cache_dir, rel, process, spec["format"])
     token = _stamp(src)
     if _fresh(dest, stamp_path, token):
-        return dest, media
+        return dest, media, False
     lock = _lock_for(str(dest))
     with lock:
-        token = _stamp(src)
-        if _fresh(dest, stamp_path, token):
-            return dest, media
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        tmp = dest.with_name(dest.name + ".tmp")
         try:
+            token = _stamp(src)
+            if _fresh(dest, stamp_path, token):
+                return dest, media, False
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dest.with_name(dest.name + ".tmp")
             _write(src, tmp, spec)
+            tmp.replace(dest)
+            stamp_path.write_text(token, encoding="utf-8")
         except Exception:
             tmp.unlink(missing_ok=True)
             if spec.get("format") == "webp":
@@ -128,14 +157,14 @@ def _process_uncached(uploads: Path, cache_dir: Path, rel: str, process: str) ->
                 tmp = dest.with_name(dest.name + ".tmp")
                 try:
                     _write(src, tmp, spec)
+                    tmp.replace(dest)
+                    stamp_path.write_text(token, encoding="utf-8")
                 except Exception:
                     tmp.unlink(missing_ok=True)
-                    return None
+                    return _placeholder(cache_dir)
             else:
-                return None
-        tmp.replace(dest)
-        stamp_path.write_text(token, encoding="utf-8")
-    return (dest, media) if dest.is_file() else None
+                return _placeholder(cache_dir)
+    return (dest, media, False) if dest.is_file() else _placeholder(cache_dir)
 
 
 def _parse(process: str) -> dict | None:
@@ -241,6 +270,46 @@ def _flatten(frame):
     base = Image.new("RGB", frame.size, (255, 255, 255))
     base.paste(frame.convert("RGBA"), mask=frame.convert("RGBA").split()[-1])
     return base
+
+
+def cleanup_cache(cache_dir: Path, days: int | None = None) -> int:
+    """缩略图缓存过期清理：删除 oss/ 下超过 N 天未访问的缓存文件，返回删除数量。
+
+    天数可经环境变量 THUMB_CACHE_DAYS 配置（默认 30，0 或负数表示不清理）。
+    长期不清理会导致磁盘随访问参数组合缓慢膨胀。
+    """
+    if days is None:
+        try:
+            days = int(os.getenv("THUMB_CACHE_DAYS", "30"))
+        except ValueError:
+            days = 30
+    if days <= 0:
+        return 0
+    oss_root = Path(cache_dir) / "oss"
+    if not oss_root.is_dir():
+        return 0
+    deadline = time.time() - days * 86400
+    removed = 0
+    for sub in oss_root.iterdir():
+        if not sub.is_dir():
+            continue
+        for f in sub.iterdir():
+            try:
+                if f.is_file() and f.stat().st_mtime < deadline:
+                    f.unlink(missing_ok=True)
+                    removed += 1
+            except OSError:
+                continue
+        try:
+            next(sub.iterdir())  # 目录为空则删除
+        except StopIteration:
+            try:
+                sub.rmdir()
+            except OSError:
+                pass
+        except OSError:
+            pass
+    return removed
 
 
 def _stamp(path: Path) -> str:

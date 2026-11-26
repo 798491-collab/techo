@@ -42,12 +42,27 @@ git reset --hard origin/main
 SP="$REPO/venv/lib/python3.10/site-packages"
 REQ="$REPO/requirements.txt"
 NEED_INSTALL=0
-python3 -c "
-import sys; sys.path.insert(0, '$SP')
-import fastapi, uvicorn, jinja2, sqlalchemy, PIL, pypinyin, pymysql, httpx, pydantic, starlette, greenlet, markupsafe, anyio, h11, click
-" 2>/dev/null || NEED_INSTALL=1
-FASTAPI_PIN=$(grep -oP '^fastapi==\K[0-9][^ ]*' "$REQ" 2>/dev/null || true)
-if [ -n "$FASTAPI_PIN" ] && [ ! -d "$SP/fastapi-$FASTAPI_PIN.dist-info" ]; then NEED_INSTALL=1; fi
+python3 - "$SP" "$REQ" <<'PY' || NEED_INSTALL=1
+import sys, pathlib
+sp, req = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+# 1) 深层导入自检：只 import 顶层包会命中「命名空间包」假阳性（__init__.py 被删也能过）
+sys.path.insert(0, str(sp))
+import fastapi.app, uvicorn.main, jinja2.runtime, sqlalchemy.orm, PIL.Image, \
+       pypinyin.core, pymysql.connections, httpx._client, pydantic.main, \
+       starlette.applications, greenlet, markupsafe, anyio, h11, click
+# 2) 固定版本 dist-info 全量核对：requirements.txt 里每个 pin 都必须有对应 dist-info
+missing = []
+for line in req.read_text(encoding="utf-8").splitlines():
+    line = line.strip()
+    if not line or line.startswith("#") or "==" not in line:
+        continue
+    name, ver = line.split("==", 1)
+    if not any(sp.glob(f"{name}-{ver}.dist-info")):
+        missing.append(line)
+if missing:
+    print("missing dist-info:", ", ".join(missing[:5]))
+    sys.exit(1)
+PY
 if [ "$NEED_INSTALL" = "1" ]; then
   log "依赖缺失/版本不符，按 requirements.txt 重装 site-packages..."
   rm -rf "$SP" && mkdir -p "$SP"

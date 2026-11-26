@@ -1326,6 +1326,9 @@ async def save_settings(request: Request, payload: dict, db: Session = Depends(g
             row.value = raw
     db.commit()
     request.app.state.cache.clear()
+    # 后台访问防护配置（IP 名单/后台地址）已变更：立即刷新防护中间件缓存
+    if {"admin_path", "admin_ip_mode", "admin_ip_rules"} & set(payload):
+        setattr(request.app.state, "_admin_guard", None)
     log_op(db, username, "setting", "edit", "basic", str(payload)[:500], "")
     return ok(msg="设置已保存")
 
@@ -1349,6 +1352,23 @@ async def reseed(request: Request, username: str = Depends(current_admin)):
 
 
 # ---------------- 上传 ----------------
+_RASTER_EXTS = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "tif", "tiff"}
+
+
+def _upload_limits() -> tuple[int, int]:
+    """(单文件大小上限 MB, 图片像素总量上限)；可用 MAX_UPLOAD_MB / MAX_UPLOAD_PIXELS 调整。"""
+    import os
+    try:
+        mb = int(os.getenv("MAX_UPLOAD_MB", "20"))
+    except ValueError:
+        mb = 20
+    try:
+        px = int(os.getenv("MAX_UPLOAD_PIXELS", "40000000"))
+    except ValueError:
+        px = 40000000
+    return max(1, mb), max(1_000_000, px)
+
+
 @router.post("/upload")
 async def upload(request: Request, file: UploadFile = File(...), username: str = Depends(current_admin)):
     cfg, db, _ = ctx(request)
@@ -1357,6 +1377,21 @@ async def upload(request: Request, file: UploadFile = File(...), username: str =
     allowed = {"png", "jpg", "jpeg", "gif", "webp", "svg", "ico", "pdf", "doc", "docx", "zip", "xls", "xlsx", "txt"}
     if ext not in allowed:
         return fail(f"不允许的文件类型: .{ext}")
+    # 大小硬限制：从源头拦截超大文件，避免内存/解码开销
+    max_mb, max_pixels = _upload_limits()
+    if len(raw) > max_mb * 1024 * 1024:
+        return fail(f"文件过大：单个文件不得超过 {max_mb}MB")
+    # 图片分辨率硬限制：超大分辨率图片解码会打爆内存（Pillow 解码内存约为像素数×3~4 字节）
+    if ext in _RASTER_EXTS:
+        from io import BytesIO
+        try:
+            from PIL import Image as _PILImage
+            with _PILImage.open(BytesIO(raw)) as im:
+                w, h = im.size
+            if w * h > max_pixels or max(w, h) > 12000:
+                return fail(f"图片分辨率过大（{w}x{h}）：最长边不得超过 12000px，总像素不得超过 {max_pixels // 10000}00 万，请压缩后再上传")
+        except Exception:
+            return fail("图片文件损坏或不是有效的图片文件")
     md5 = hashlib.md5(raw).hexdigest()
     file_type = "image" if ext in {"png", "jpg", "jpeg", "gif", "webp", "svg", "ico"} else "file"
     # 存储目录模板：默认 {filetype}/{year}{month}/{day}；文件名始终为 md5 全值 + 后缀

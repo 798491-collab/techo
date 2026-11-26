@@ -19,11 +19,11 @@ Techo 由 Tea 和 Echo 组成，读音 /ˈtiːkoʊ/。**Tea 呼应一杯茶的�
 
 | 站点 | 站点主体 | 端口 | 主题风格 |
 | --- | --- | --- | --- |
-| nanjing | 南京筑韬建筑工程有限公司 | 8101 | 深蓝商务 · 大图 Banner |
-| hefei | 合肥筑骋建筑工程咨询有限公司 | 8102 | 橙色活力 · 卡片式 |
-| xuzhou | 徐州玖硕建筑工程咨询有限公司 | 8103 | 红色稳重 · 政务风 |
-| wuxi | 无锡君鑫建筑工程咨询有限公司 | 8104 | 墨绿高端 · 杂志排版 |
-| hangzhou | 杭州志俞建筑工程咨询有限公司 | 8105 | 黑白极简 · 科技几何 |
+| nanjing | 示例客户 A（南京）建筑工程有限公司 | 8101 | 深蓝商务 · 大图 Banner |
+| hefei | 示例客户 B（合肥）建筑工程咨询有限公司 | 8102 | 橙色活力 · 卡片式 |
+| xuzhou | 示例客户 C（徐州）建筑工程咨询有限公司 | 8103 | 红色稳重 · 政务风 |
+| wuxi | 示例客户 D（无锡）建筑工程咨询有限公司 | 8104 | 墨绿高端 · 杂志排版 |
+| hangzhou | 示例客户 E（杭州）建筑工程咨询有限公司 | 8105 | 黑白极简 · 科技几何 |
 
 ## 快速启动
 
@@ -78,8 +78,8 @@ python start.py stop     # 停止
 
 ### 自动部署（Drone CI + Webhook，已上线）
 
-- **Drone CI 界面（30080）**：`http://45.91.139.246:30080` —— 用 Gitee 账号登录，可查看每次 push 的构建记录与日志、手动触发重新构建；健康检查 `http://127.0.0.1:30080/healthz`（服务器本机）
-- **完整链路**：仓库 push → Gitee WebHook（唯一一条，指向 `http://45.91.139.246:30080/hook`）→ Drone push 构建（五站源码编译校验）→ 自动 promote 到 production → 生产构建 → `curl 127.0.0.1:8300/hook` → 服务器 webhook 接收器（nsenter 进入宿主机执行）→ `k8s/k3s-deploy.sh`；Drone Deployments 页有完整生产部署/回滚记录
+- **Drone CI 界面（30080）**：`http://<CI服务器IP>:30080` —— 用 Gitee 账号登录，可查看每次 push 的构建记录与日志、手动触发重新构建；健康检查 `http://127.0.0.1:30080/healthz`（服务器本机）
+- **完整链路**：仓库 push → Gitee WebHook（唯一一条，指向 `http://<CI服务器IP>:30080/hook`）→ Drone push 构建（五站源码编译校验）→ 自动 promote 到 production → 生产构建 → `curl 127.0.0.1:8300/hook` → 服务器 webhook 接收器（nsenter 进入宿主机执行）→ `k8s/k3s-deploy.sh`；Drone Deployments 页有完整生产部署/回滚记录
 - **部署脚本**：`apply` Service → `apply` Deployment（注入 commit 注记）→ 同步 nginx 反代并 reload → 等待就绪 → 经 ClusterIP 健康检查 → 失败自动 `rollout undo` 回滚
 - 部署日志：`scripts/k3s-deploy.log`（宿主机）+ `scripts/webhook.log`（接收器）；Drone 配置详见 `k8s/DRONE.md`
 
@@ -99,7 +99,7 @@ kubectl -n pysite delete pod -l app=pysite-nanjing --wait=true  # 强制重建 P
 kubectl -n pysite get events --sort-by=.metadata.creationTimestamp | tail -30
 
 # ---------- 日志 ----------
-tail -f /www/wwwlogs/hangzhouzhiyu.net.error.log                     # nginx 反代错误（502 根因线索）
+tail -f /www/wwwlogs/example-hz.com.error.log                     # nginx 反代错误（502 根因线索）
 tail -f /www/wwwroot/pysite/sites/hangzhou/storage/logs/site.log      # 应用访问日志
 tail -f /www/wwwroot/pysite/scripts/k3s-deploy.log                    # 部署日志
 tail -f /www/wwwroot/pysite/scripts/webhook.log                       # webhook / Drone 触发日志
@@ -112,12 +112,12 @@ kubectl -n pysite get deploy pysite-hangzhou -o jsonpath='{.spec.template.spec.c
 
 # ---------- 从外部探测 ----------
 # 本机若设置了 HTTP_PROXY，必须加 --noproxy '*'，否则代理自身故障会伪报 502
-curl --noproxy '*' -H 'Host: www.hangzhouzhiyu.net' http://<服务器IP>/
+curl --noproxy '*' -H 'Host: www.example-hz.com' http://<服务器IP>/
 ```
 
 ### 502 故障排查实录（2026-11-26）
 
-**现象**：`https://www.hangzhouzhiyu.net/admin/` 返回 502，其余四站正常。
+**现象**：`https://www.example-hz.com/（示例占位，实际域名见服务器 nginx）admin/` 返回 502，其余四站正常。
 
 **排查链路（由外到内）**：
 

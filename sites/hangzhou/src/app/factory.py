@@ -8,8 +8,10 @@ import asyncio
 import importlib
 import logging
 import mimetypes
+import threading
 import time
 from contextlib import asynccontextmanager
+from ipaddress import ip_address as _ip_address, ip_network as _ip_network
 from pathlib import Path
 
 logger = logging.getLogger("pysite")
@@ -17,6 +19,7 @@ logger = logging.getLogger("pysite")
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
+from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -118,6 +121,172 @@ class AdminOpLogMiddleware(BaseHTTPMiddleware):
             session.close()
 
 
+class AdminGuardMiddleware:
+    """管理后台访问防护（纯 ASGI，注册在最外层）：
+
+    1. IP 黑/白名单：后台「安全设置」可配置，每行一个，支持
+       - 精确 IP：172.16.10.111
+       - CIDR：172.16.10.0/24（白名单放行所有来源填 0.0.0.0/0 与 ::/0）
+       - 通配符：172.16.*
+       默认黑名单模式且列表为空（全放行）；白名单模式列表为空时除本机回环外全部拒绝。
+    2. 后台访问地址隐藏（admin_path 配置，默认 admin）：
+       - 配置为自定义值（如 secret-admin）后，入口变为 /secret-admin（访问即发 Cookie）；
+       - /admin 页面与 /api/admin 接口需持有效入口 Cookie，否则一律 404。
+    配置每 30 秒刷新一次；改完设置最长 30 秒生效。
+    """
+
+    _TTL = 30.0
+
+    def __init__(self, app):
+        self.app = app
+
+    # ---------- 配置 ----------
+    def _config(self, scope) -> dict | None:
+        app = scope.get("app")
+        if app is None or not hasattr(app.state, "db"):
+            return None
+        state = app.state
+        now = time.time()
+        cached = getattr(state, "_admin_guard", None)
+        if cached and now - cached[0] < self._TTL:
+            return cached[1]
+        conf = None
+        try:
+            session = state.db.session()
+            try:
+                rows = session.scalars(select(Setting.key, Setting.value).where(
+                    Setting.key.in_(["admin_path", "admin_ip_mode", "admin_ip_rules"]))).all()
+                kv = {k: v for k, v in rows}
+            finally:
+                session.close()
+            conf = {
+                "admin_path": (kv.get("admin_path") or "admin").strip().strip("/"),
+                "mode": (kv.get("admin_ip_mode") or "blacklist").strip(),
+                "rules": [ln.strip() for ln in (kv.get("admin_ip_rules") or "").splitlines() if ln.strip()],
+            }
+        except Exception:
+            return cached[1] if cached else None  # 读库失败沿用上次配置（fail-open 保可用）
+        state._admin_guard = (now, conf)
+        return conf
+
+    # ---------- IP ----------
+    @staticmethod
+    def _request_ip(scope) -> str:
+        for name in (b"x-forwarded-for", b"x-real-ip"):
+            for k, v in scope.get("headers") or []:
+                if k == name:
+                    val = v.decode("latin-1", "replace").split(",")[0].strip()
+                    if val:
+                        return val
+        client = scope.get("client")
+        return client[0] if client else ""
+
+    @staticmethod
+    def _ip_match(ip: str, pattern: str) -> bool:
+        try:
+            if any(ch in pattern for ch in "*?"):
+                import fnmatch
+                return fnmatch.fnmatch(ip, pattern)
+            if "/" in pattern:
+                return _ip_address(ip) in _ip_network(pattern, strict=False)
+            return ip == pattern
+        except ValueError:
+            return False
+
+    def _ip_verdict(self, ip: str, conf: dict) -> bool | None:
+        """True=放行 False=拒绝 None=按默认策略放行。"""
+        if not ip:
+            return None
+        loopback = ip in ("127.0.0.1", "::1")
+        rules = conf["rules"]
+        if conf["mode"] == "whitelist":
+            if loopback:
+                return True
+            if not rules:
+                return False  # 白名单为空=全拒绝（本机除外），防呆见 UI 提示
+            return any(self._ip_match(ip, r) for r in rules)
+        if rules and any(self._ip_match(ip, r) for r in rules) and not loopback:
+            return False
+        return None
+
+    # ---------- Cookie ----------
+    @staticmethod
+    def _gate_token(admin_path: str) -> str:
+        import hashlib as _hl
+        return _hl.sha256(f"admin-gate:{admin_path}".encode()).hexdigest()[:32]
+
+    @staticmethod
+    def _cookie_value(scope, name: str) -> str:
+        from http.cookies import SimpleCookie
+        for k, v in scope.get("headers") or []:
+            if k == b"cookie":
+                try:
+                    jar = SimpleCookie()
+                    jar.load(v.decode("latin-1"))
+                    morsel = jar.get(name)
+                    return morsel.value if morsel else ""
+                except Exception:
+                    return ""
+        return ""
+
+    # ---------- 主流程 ----------
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        conf = self._config(scope)
+        if not conf:
+            await self.app(scope, receive, send)
+            return
+        path = scope.get("path", "")
+        admin_path = conf["admin_path"]
+        custom = bool(admin_path) and admin_path != "admin"
+        is_entry = False
+        if custom and (path == f"/{admin_path}" or path.startswith(f"/{admin_path}/")):
+            # 入口路径改写为真实后台路径
+            scope = dict(scope)
+            scope["path"] = "/admin" + path[len(admin_path):]
+            scope["raw_path"] = scope["path"].encode()
+            path = scope["path"]
+            is_entry = True
+        is_admin_page = path == "/admin" or path.startswith("/admin/")
+        is_admin_api = path.startswith("/api/admin")
+        if not (is_admin_page or is_admin_api):
+            await self.app(scope, receive, send)
+            return
+        # IP 防护
+        verdict = self._ip_verdict(self._request_ip(scope), conf)
+        if verdict is False:
+            resp = JSONResponse({"code": 403, "msg": "当前 IP 不在允许范围内"},
+                                status_code=403)
+            await resp(scope, receive, send)
+            return
+        # 入口隐藏（Cookie 门禁）
+        if custom:
+            token = self._gate_token(admin_path)
+            if self._cookie_value(scope, "admin_gate") != token:
+                if is_entry:
+                    # 首次访问自定义入口：放行并下发 Cookie
+                    await self._run_set_cookie(scope, receive, send, token)
+                elif is_admin_api:
+                    resp = JSONResponse({"code": 404, "msg": "Not Found"}, status_code=404)
+                    await resp(scope, receive, send)
+                else:
+                    resp = Response("Not Found", status_code=404)
+                    await resp(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+    async def _run_set_cookie(self, scope, receive, send, token):
+        async def send_with_cookie(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers.append("set-cookie",
+                               f"admin_gate={token}; Path=/; Max-Age=604800; HttpOnly; SameSite=Lax")
+            await send(message)
+        await self.app(scope, receive, send_with_cookie)
+
+
 def _safe_file(base: Path, rel: str) -> Path | None:
     base = base.resolve()
     target = (base / rel).resolve()
@@ -197,9 +366,31 @@ def mount_package_routers(app: FastAPI) -> None:
         app.include_router(router)
 
 
+def _guard_env_not_tracked(cfg) -> None:
+    """安全检查：.env 含 SECRET_KEY，绝不允许被 Git 跟踪；发现即拒绝启动。"""
+    import subprocess
+    env_file = Path(cfg.root) / ".env"
+    if not env_file.is_file():
+        return
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(cfg.root), "ls-files", "--", ".env"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            raise RuntimeError(
+                "安全检查失败：.env 文件被 Git 跟踪，SECRET_KEY 有泄露风险，拒绝启动。"
+                "请在仓库根目录执行 `git rm --cached sites/"
+                f"{cfg.key}/.env` 并确认 .gitignore 生效后重试。"
+            )
+    except FileNotFoundError:
+        pass  # 无 git 环境（如容器内直跑）跳过
+
+
 def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
     cfg = cfg or load_settings()
     cfg.ensure_dirs()
+    _guard_env_not_tracked(cfg)
     # 导入模型模块，保证建表时元数据完整。
     import app.accounts.models  # noqa: F401
     import app.content.models  # noqa: F401
@@ -248,6 +439,16 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
 
         task = asyncio.create_task(publish_loop())
         cron_task = asyncio.create_task(cron_loop())
+        # 缩略图缓存过期清理（后台线程，不阻塞启动）：THUMB_CACHE_DAYS 控制，默认 30 天
+        def _thumb_gc():
+            try:
+                from app.media.thumb import cleanup_cache
+                removed = cleanup_cache(cfg.cache_path)
+                if removed:
+                    logger.info("缩略图缓存清理：删除 %d 个过期文件", removed)
+            except Exception:
+                pass
+        threading.Thread(target=_thumb_gc, daemon=True, name="thumb-gc").start()
         yield
         task.cancel()
         cron_task.cancel()
@@ -269,6 +470,8 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
     # 响应耗时采集（纯 ASGI，开销可忽略）：X-Response-Time 响应头 + 内存滑动窗口
     app.state.perf = PerfStats()
     app.add_middleware(ResponseTimeMiddleware, stats=app.state.perf)
+    # 后台访问防护（IP 黑/白名单 + 自定义后台地址）：最后注册 = 最外层，最先执行
+    app.add_middleware(AdminGuardMiddleware)
     app.state.cfg = cfg
     app.state.db = db
     app.state.cache = cache
@@ -366,9 +569,15 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
         process = request.query_params.get("x-oss-process")
         if process:
             from app.media.thumb import cached_process
-            done = cached_process(cfg.uploads_path, cfg.cache_path, path, process)
+            try:
+                done = cached_process(cfg.uploads_path, cfg.cache_path, path, process)
+            except Exception:
+                done = None
             if done is not None:
-                cached, media = done
+                cached, media, is_placeholder = done
+                if is_placeholder:
+                    # 占位图（源图损坏/处理异常）：短缓存，避免占位结果被浏览器长存
+                    return _file(request, cached, "public, max-age=300", media)
                 return _file(request, cached, "public, max-age=2592000", media)
         # 上传文件名为 uuid 随机生成、内容不变，可安全长缓存（重复访问不再回源验证）
         return _file(request, target, "public, max-age=2592000")
