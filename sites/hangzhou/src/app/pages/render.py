@@ -91,28 +91,45 @@ def base_context(request: Request, db: Session, cfg: SiteConfig, extra: dict | N
             select(Category).where(Category.deleted_at.is_(None), Category.status == 1).order_by(Category.sort)
         ).all()
         slug_of = {int(c.id): (c.slug or "") for c in rows}
+        name_of = {int(c.id): (c.name or "") for c in rows}
         cats = [to_dict(c) for c in rows]
         nav = [c for c in cats if c.get("is_nav")]
-        hot = [{"id": c.id, "title": c.title, "model": c.model, "cover": c.cover,
-                "summary": c.summary,
-                "created_at": ((c.publish_at or c.created_at) or c.created_at).strftime("%Y-%m-%d"),
-                "category_slug": slug_of.get(int(c.category_id or 0), "")}
-               for c in db.scalars(select(Content).where(
-                   Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(), Content.is_hot == 1
-               ).order_by(func.coalesce(Content.publish_at, Content.created_at).desc()).limit(6)).all()]
-        prods = [{"id": c.id, "title": c.title, "category_slug": slug_of.get(int(c.category_id or 0), "")}
+
+        def brief_hot(c):
+            return {"id": c.id, "title": c.title, "model": c.model, "cover": c.cover,
+                    "summary": c.summary,
+                    "created_at": ((c.publish_at or c.created_at) or c.created_at).strftime("%Y-%m-%d"),
+                    "category_slug": slug_of.get(int(c.category_id or 0), ""),
+                    "category_name": name_of.get(int(c.category_id or 0), "")}
+
+        # 页脚“新闻资讯”只允许 article 模型；热点不足时用最新文章补齐，避免整列空白或混入产品
+        base_news = select(Content).where(
+            Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(), Content.model == "article"
+        ).order_by(func.coalesce(Content.publish_at, Content.created_at).desc())
+        hot = [brief_hot(c) for c in db.scalars(base_news.where(Content.is_hot == 1).limit(6)).all()]
+        if len(hot) < 4:
+            used = {h["id"] for h in hot}
+            hot.extend(brief_hot(c) for c in db.scalars(base_news.limit(8)).all() if c.id not in used)
+            hot = hot[:6]
+        prods = [{"id": c.id, "title": c.title,
+                  "category_slug": slug_of.get(int(c.category_id or 0), ""),
+                  "category_name": name_of.get(int(c.category_id or 0), "")}
                  for c in db.scalars(select(Content).where(
                      Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(), Content.model == "product"
                  ).order_by(Content.is_top.desc(), Content.sort, Content.id.desc()).limit(8)).all()]
         return cats, nav, hot, prods
 
-    # 兼容旧缓存结构（升级前 common 为 3 元组）
-    _common = cache.remember("common", load_common, ttl=600)
+    # common2：键升级强制刷新页脚新闻/产品数据（模型过滤修复）
+    _common = cache.remember("common2", load_common, ttl=600)
     if len(_common) == 4:
         cats, nav, hot, footer_products = _common
     else:
         cats, nav, hot = _common
         footer_products = []
+
+    def first_cat_slug(model):
+        return next((c.get("slug") or "" for c in cats
+                     if c.get("model") == model and int(c.get("status") or 0) == 1), "")
     # banner 轮播数据（banner 模型已发布内容：标题/副标题/图片），供主题 hero 使用
     banners = []
     try:
@@ -162,6 +179,9 @@ def base_context(request: Request, db: Session, cfg: SiteConfig, extra: dict | N
         "nav_categories": nav,
         "hot_contents": hot,
         "footer_products": footer_products,
+        "news_category_slug": first_cat_slug("article"),
+        "product_category_slug": first_cat_slug("product"),
+        "case_category_slug": first_cat_slug("case"),
         "banners": banners,
         "settings": settings,
         "theme_key": settings.get("theme_active") or "default",
@@ -334,14 +354,18 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
             cat_scope = cache.remember(f"cat_scope:{int(cat.id)}", lambda: cat_ids(int(cat.id)), 600)
             def items():
                 stmt = select(Content).where(Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(),
-                                             Content.category_id.in_(cat_scope)).order_by(
+                                             Content.category_id.in_(cat_scope))
+                # 模型与栏目对应：article 栏目只出新闻、product 栏目只出产品，避免分类串查
+                if cat.model:
+                    stmt = stmt.where(Content.model == cat.model)
+                stmt = stmt.order_by(
                     Content.is_top.desc(), func.coalesce(Content.publish_at, Content.created_at).desc())
                 total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
                 rows = db.scalars(stmt.offset((page - 1) * size).limit(size)).all()
                 return total, [to_brief(c) for c in rows]
             # 注意：这里必须用独立变量名，不能覆盖上方的整页 cache_key（oss34:路径），
             # 否则栏目页整页缓存永远写不进去，每次请求都全量渲染（实测 100ms vs 3ms）。
-            list_cache_key = f"listv2:{slug}:{page}"
+            list_cache_key = f"listv3:{slug}:{page}"
             total, items_list = cache.remember(list_cache_key, items, 300)
             extra.update({"category": to_dict(cat), "items": items_list, "total": total,
                           "page": page, "pages": max(1, (total + size - 1) // size)})

@@ -41,7 +41,7 @@
       html+=`<div class="nav-group">${esc(g.name)}</div>`;
       items.forEach(m=>html+=`<div class="nav-item" data-key="${m.key}" data-name="${esc(m.name)}" onclick="App.open('${m.key}')" tabindex="0"><i class="bi ${m.icon}"></i><span>${esc(m.name)}</span></div>`);
     });
-    box.innerHTML=html||'<div style="padding:24px 12px;color:var(--side-text-2);font-size:13px;text-align:center"><i class="bi bi-search" style="display:block;font-size:24px;margin-bottom:8px"></i>无匹配菜单</div>';
+    box.innerHTML=html||`<div style="padding:24px 12px;color:var(--side-text-2);font-size:13px;text-align:center"><i class="bi ${f?'bi-search':'bi-shield-lock'}" style="display:block;font-size:24px;margin-bottom:8px"></i>${f?'无匹配菜单':'暂无可访问菜单'}</div>`;
     highlight(activeTab);
   }
   function highlight(key){ document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.key===key)); }
@@ -92,8 +92,12 @@
   function openDashboard(){
     tabs.length=0; disposeCharts();
     document.getElementById('content').innerHTML='';
-    renderTabs(); location.hash='dashboard';
-    open('dashboard');
+    renderTabs();
+    /* 无仪表盘权限时回落到第一个有权限的菜单，避免空白页 */
+    const first=MENU_MAP.dashboard?'dashboard':Object.keys(MENU_MAP)[0];
+    if(!first) return;
+    location.hash=first;
+    open(first);
   }
 
   async function open(key){
@@ -1392,8 +1396,15 @@
     }catch(e){}
     renderMenu();
     const hash=location.hash.slice(1)||'dashboard';
-    if(hash==='login'){ location.hash='dashboard'; open('dashboard'); return; }
-    open(MENU_MAP[hash]?hash:(hash==='profile'?'profile':'dashboard'));
+    /* 菜单由后端按角色 rules 下发；越权 hash 一律回落到可访问页 */
+    const fallback=MENU_MAP[hash]?hash:(MENU_MAP.dashboard?'dashboard':Object.keys(MENU_MAP)[0]||'');
+    if(hash==='login'||!fallback){
+      const target=MENU_MAP.dashboard?'dashboard':Object.keys(MENU_MAP)[0]||'';
+      if(target){ location.hash=target; open(target); }
+      return;
+    }
+    if(fallback!==hash) location.hash=fallback;
+    open(fallback);
   }
 
   /* 侧栏底部：仅探测在线状态。

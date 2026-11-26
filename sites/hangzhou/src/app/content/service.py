@@ -67,6 +67,10 @@ MENU_DEFS = [
     {"key": "dev-health", "name": "健康检查", "icon": "bi-heart-pulse", "group": "开发管理"},
 ]
 
+# 静态模型菜单由 MENU_DEFS 固定；动态内容模型自动生成 content-{code} 菜单与权限节点
+STATIC_MODEL_CODES = {"article", "product", "case", "banner", "page"}
+SKIP_CODES = {"category", "recycle"}
+
 
 
 def to_dict(obj: Any, exclude: tuple[str, ...] = ()) -> dict:
@@ -96,6 +100,48 @@ def jdumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, default=str)
 
 
+# ---------------- RBAC：角色 rules 解析与匹配 ----------------
+def rule_allows(rules, key: str, group: str = "") -> bool:
+    """判断角色规则是否允许某个菜单/功能 key。
+
+    支持：["*"] 全量、精确 key、分组名 / group:分组名、
+    "content:*" 前缀通配、"content-*" 字符串前缀通配。
+    """
+    if not rules:
+        return False
+    for raw in rules:
+        r = str(raw or "").strip()
+        if not r:
+            continue
+        if r == "*" or r == key:
+            return True
+        if group and r in (group, "group:" + group):
+            return True
+        if r.endswith(":*") and key.startswith(r[:-1]):
+            return True
+        if r.endswith("*"):
+            prefix = r[:-1]
+            if key.startswith(prefix) or (group and group.startswith(prefix)):
+                return True
+    return False
+
+
+def rules_for_user(db: Session, username: str) -> list[str]:
+    """读取管理员角色 rules；超管返回 ["*"]，禁用账号返回空。"""
+    user = db.scalar(select(AdminUser).where(AdminUser.username == username))
+    if not user or int(user.status or 0) != 1:
+        return []
+    if int(user.is_super or 0) == 1 or (user.role or "") == "super":
+        return ["*"]
+    role = db.scalar(select(AdminRole).where(AdminRole.name == user.role))
+    if not role or int(role.status or 0) != 1:
+        return []
+    rules = jloads(role.rules, [])
+    if not isinstance(rules, list):
+        return []
+    return [str(x) for x in rules if str(x or "").strip()]
+
+
 # ---------------- 管理员密码规则（正则 + 提示文案，可在后台配置） ----------------
 DEFAULT_PWD_REGEX = r"^(?=.{8,50}$)(?:(?=.*[0-9])(?=.*[A-Za-z])|(?=.*[0-9])(?=.*[^A-Za-z0-9\s])|(?=.*[A-Za-z])(?=.*[^A-Za-z0-9\s]))\S+$"
 DEFAULT_PWD_TIP = "密码必须由数字、字母、特殊字符中的至少两类组成，长度 8-50 位，不能包含空格"
@@ -120,6 +166,7 @@ def password_valid(db: Session, pwd: str) -> bool:
 
 # ---------------- 静态资源版本号（清缓存时 +1） ----------------
 STATIC_VERSION_KEY = "static_version"
+CODE_VERSION = "20261126-rbac-theme"
 
 
 def get_static_version(db: Session) -> str:
@@ -144,6 +191,20 @@ def bump_static_version(db: Session) -> str:
     return ver
 
 
+def sync_code_version(db: Session) -> bool:
+    """代码版本变化时自动 +1 静态资源版本号，确保浏览器拉取最新 JS/CSS。"""
+    row = db.scalar(select(Setting).where(Setting.key == "__code_version"))
+    if row is not None and str(row.value or "") == CODE_VERSION:
+        return False
+    if row is None:
+        db.add(Setting(key="__code_version", value=CODE_VERSION, group="basic"))
+    else:
+        row.value = CODE_VERSION
+    db.commit()
+    bump_static_version(db)
+    return True
+
+
 # ---------------- 通用 CRUD ----------------
 TEXT_FIELDS = {"body", "summary", "description", "detail", "value", "fields", "data", "extra", "content", "seo_description"}
 
@@ -151,7 +212,7 @@ TEXT_FIELDS = {"body", "summary", "description", "detail", "value", "fields", "d
 def paginate(db: Session, model: Type, params: dict, force: dict | None = None) -> dict:
     """通用分页查询：params 由请求提供，force 由服务端强制（如软删除过滤）。"""
     page = max(1, int(params.get("page", 1)))
-    size = min(200, max(1, int(params.get("size", params.get("limit", 20)))))
+    size = min(200, max(1, int(params.get("size", params.get("limit", 10)))))
     stmt = select(model)
     if force:
         for k, v in force.items():
@@ -182,7 +243,7 @@ def paginate(db: Session, model: Type, params: dict, force: dict | None = None) 
 def paginate_stmt(db: Session, model: Type, stmt, params: dict) -> dict:
     """基于已有 select 语句的分页（用于软删除过滤等场景）。"""
     page = max(1, int(params.get("page", 1)))
-    size = min(200, max(1, int(params.get("size", params.get("limit", 20)))))
+    size = min(200, max(1, int(params.get("size", params.get("limit", 10)))))
     keyword = (params.get("keyword") or params.get("search") or "").strip()
     if keyword:
         kw_cols = [getattr(model, c) for c in ("title", "name", "filename", "slug", "code", "username") if hasattr(model, c)]
@@ -333,6 +394,22 @@ def _align_permission_tree(db: Session) -> int:
             expected.append((item["name"], item["key"], gkey, mi, item["icon"]))
     group_keys = [k for k in group_icons]
 
+    # 启用的动态内容模型同样生成权限节点，角色可视化选权后才能按 rules 精确授权
+    try:
+        dyn_cts = db.scalars(select(ContentType).where(ContentType.status == 1).order_by(ContentType.id)).all()
+    except Exception:
+        dyn_cts = []
+    have_keys = {e[1] for e in expected}
+    for ct in dyn_cts:
+        code = str(getattr(ct, "code", "") or "")
+        if not code or code in STATIC_MODEL_CODES | SKIP_CODES:
+            continue
+        key = "content-" + code
+        if key in have_keys:
+            continue
+        expected.append((getattr(ct, "name", "") or code, key, "group:内容管理", 90 + len(expected), getattr(ct, "icon", "") or "bi-file-earmark"))
+        have_keys.add(key)
+
     # 特权/按钮节点：统一纳入对齐（menu() 里的 EXTRA_PERMS 因 key 已存在不会重复补种）
     # (name, key, 归属分组名, sort, icon, type)
     priv = [
@@ -388,6 +465,8 @@ def seed_site(db: Session, cfg, seed_file: Path, force: bool = False) -> dict:
         return {"error": f"种子文件不存在: {seed_file}"}
     data = json.loads(seed_file.read_text(encoding="utf-8"))
     result: dict[str, int] = {}
+    if sync_code_version(db):
+        result["static_version"] = 1
 
     # 管理员（幂等：存在则更新密码）
     # 敏感信息零入库：seed.json 中密码为占位符时回退到 cfg.admin_password（环境变量/本地凭据文件）

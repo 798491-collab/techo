@@ -377,3 +377,17 @@ html,body{overflow-x:hidden;overflow-x:clip}
 /* ===== 卡片文字超出隐藏：标题单行省略，简介/内容多行截断 ===== */
 .sv-sol-body h3,.sv-case-body h3,.sv-news-item-txt h3,.sv-news-lead-body h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sv-sol-body p,.sv-news-item-txt p,.sv-news-lead-body p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ===== 2026-11-26 蜂巢深蓝：新闻/方案卡片内容不溢出容器 ===== */
+.sv-news-grid,.sv-news-lead,.sv-news-list{min-width:0}
+.sv-news-item{min-width:0;overflow:hidden}
+.sv-news-item time,.sv-news-item>.bi{flex:0 0 auto}
+.sv-news-item-txt{flex:1 1 auto;min-width:0;overflow:hidden}
+.sv-news-item-txt h3,.sv-news-lead-body h3,.sv-sol-body h3{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  white-space:normal;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;
+}
+.sv-news-item-txt p,.sv-news-lead-body p,.sv-sol-body p{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+  white-space:normal;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;
+}

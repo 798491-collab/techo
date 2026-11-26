@@ -359,3 +359,17 @@ html,body{overflow-x:hidden;overflow-x:clip}
 
 /* 导航项 wrapper（子菜单移出 <a>，修复嵌套锚点被浏览器拆散的问题） */
 .sv-nav-item{position:relative;display:flex;align-items:stretch}
+
+/* ===== 2026-11-26 蜂巢深蓝：新闻/方案卡片内容不溢出容器 ===== */
+.sv-news-grid,.sv-news-lead,.sv-news-list{min-width:0}
+.sv-news-item{min-width:0;overflow:hidden}
+.sv-news-item time,.sv-news-item>.bi{flex:0 0 auto}
+.sv-news-item-txt{flex:1 1 auto;min-width:0;overflow:hidden}
+.sv-news-item-txt h3,.sv-news-lead-body h3,.sv-sol-body h3{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  white-space:normal;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;
+}
+.sv-news-item-txt p,.sv-news-lead-body p,.sv-sol-body p{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+  white-space:normal;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;
+}

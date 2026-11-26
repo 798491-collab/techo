@@ -30,6 +30,7 @@ from app.core.security import hash_password, make_token, parse_token, verify_pas
 from app.content.service import (
     bump_static_version, create_item, delete_items, get_item, get_password_rule, jloads, log_op,
     paginate, password_valid, seed_site, to_dict, update_item, MENU_DEFS,
+    rule_allows, rules_for_user, STATIC_MODEL_CODES, SKIP_CODES,
 )
 
 from app.accounts.router import router
@@ -52,6 +53,15 @@ def current_admin(request: Request) -> str:
     username = parse_token(cfg.secret, token)
     if not username:
         raise HTTPException(status_code=401, detail={"code": 10001, "msg": "登录已失效"})
+    # 账号被禁用后旧 token 立即失效（RBAC 基础校验）
+    _, db, _ = ctx(request)
+    session = db.session()
+    try:
+        user = session.scalar(select(AdminUser).where(AdminUser.username == username))
+    finally:
+        session.close()
+    if not user or int(user.status or 0) != 1:
+        raise HTTPException(status_code=401, detail={"code": 10001, "msg": "账号已被禁用"})
     return username
 
 
@@ -153,6 +163,8 @@ async def login(request: Request, payload: dict):
         return ok({"token": token, "username": user.username,
                    "nickname": user.nickname or user.username, "role": user.role,
                    "avatar": user.avatar or "",
+                   "rules": rules_for_user(session, user.username),
+                   "is_super": int(user.is_super or 0) == 1 or (user.role or "") == "super",
                    "last_login_at": prev_login_at, "last_login_ip": prev_login_ip}, "登录成功")
     finally:
         session.close()
@@ -166,6 +178,8 @@ async def me(request: Request, username: str = Depends(current_admin), db: Sessi
         "nickname": (user.nickname if user else "") or username,
         "avatar": (user.avatar if user else "") or "",
         "role": (user.role if user else "") or "admin",
+        "rules": rules_for_user(db, username),
+        "is_super": bool(user and (int(user.is_super or 0) == 1 or (user.role or "") == "super")),
         "last_login_at": (user.last_login_at.strftime("%Y-%m-%d %H:%M:%S") if user and user.last_login_at else ""),
         "last_login_ip": (user.last_login_ip if user else "") or "",
         # 上次登录时间（本次登录之前的那次，非当前登录）
@@ -245,40 +259,42 @@ def _ensure_perms(session: Session):
 
 @router.get("/menu")
 async def menu(request: Request, username: str = Depends(current_admin)):
-    """返回菜单结构（分组 -> 菜单项），按系统配置开关过滤显隐。"""
+    """返回菜单结构：按角色 rules + 系统开关 + 模型状态过滤，越权菜单不下发。"""
     _, db, _ = ctx(request)
     session = db.session()
     try:
         _ensure_perms(session)
         settings = {r.key: r.value for r in session.scalars(select(Setting)).all()}
+        rules = rules_for_user(session, username)
+        try:
+            models_by_code = {r.code: r for r in session.scalars(select(ContentType)).all()}
+        except Exception:
+            models_by_code = {}
     finally:
         session.close()
+
     def enabled(key):
         return str(settings.get(key, "1")) not in ("0", "false", "False")
 
-    # 内容模型菜单：名称动态跟随 content_type.name；模型禁用则对应菜单不显示
-    models_by_code = {}
-    try:
-        models_by_code = {r.code: r for r in session.scalars(select(ContentType)).all()}
-    except Exception:
-        models_by_code = {}
+    def allowed(key, group=""):
+        return rule_allows(rules, key, group)
 
     # 需求：所有启用的内容模型都要出现在「内容管理」菜单下（如单页 page）。
-    # 静态 MENU 只覆盖 article/product/case/banner，其余模型动态生成 content-{code} 菜单，
-    # 插入在「回收站」之前；禁用模型不显示。
-    # 静态菜单里已固定名称的内容模型：名称以 MENU 为准，不跟随模型名，也不重复生成动态项
-    STATIC_MODEL_CODES = {"article", "product", "case", "banner", "page"}
-    SKIP_CODES = {"category", "recycle"}  # category/recycle 是功能菜单不是模型
+    # 动态模型菜单同样受 rules 约束（权限树中可勾选 content-{code}）。
     dynamic_model_items = [
         {"key": f"content-{ct.code}", "name": ct.name, "icon": ct.icon or "bi-file-earmark"}
         for code, ct in sorted(models_by_code.items(), key=lambda x: x[1].id or 0)
-        if code and code not in STATIC_MODEL_CODES | SKIP_CODES and int(ct.status or 0)
+        if code and code not in STATIC_MODEL_CODES | SKIP_CODES
+        and int(ct.status or 0) and allowed(f"content-{code}", "内容管理")
     ]
 
     groups: dict[str, list] = {}
     order = []
     for m in MENU:
         g = m["group"]
+        # 角色权限：分组键可直接授权整组；否则逐项匹配菜单 key
+        if not allowed(m["key"], g):
+            continue
         # 分组级开关（值可为字符串或列表；列表中任一开关关闭即隐藏整组）
         gsw = GROUP_SWITCH.get(g)
         if gsw:
@@ -309,7 +325,9 @@ async def menu(request: Request, username: str = Depends(current_admin)):
             groups[g] = []
             order.append(g)
         groups[g].append(item)
-    return ok([{"name": g, "items": groups[g]} for g in order])
+    # 分组空则不下发，避免空标题出现在侧栏
+    visible = [{"name": g, "items": groups[g]} for g in order if groups[g]]
+    return ok(visible)
 
 
 # ---------------- 仪表盘 ----------------
@@ -729,7 +747,7 @@ def build_config(resource: str, title: str = "", force_model: str | None = None,
             form.insert(0, {"key": "model", "label": "内容模型", "type": "hidden", "value": force_model})
         _force_model_required(form, force_model)
         return {"title": title or resource, "model": resource, "columns": columns,
-                "filters": filters, "form": form, "readonly": readonly, "size": 15}
+                "filters": filters, "form": form, "readonly": readonly, "size": 10}
     # 需求：所有 CRUD 表单移除「所属站点」；管理员新增不显示最后登录时间
     skip = {"id", "created_at", "updated_at", "deleted_at", "deleted_by",
             "site_id", "source_site_id"}
@@ -853,7 +871,7 @@ def build_config(resource: str, title: str = "", force_model: str | None = None,
                 f["required"] = True
     _force_model_required(form, force_model)
     return {"title": title or resource, "model": resource, "columns": columns,
-            "filters": filters, "form": form, "readonly": readonly, "size": 15}
+            "filters": filters, "form": form, "readonly": readonly, "size": 10}
 
 
 def _dynamic_options(db):

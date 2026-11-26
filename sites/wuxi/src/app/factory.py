@@ -14,7 +14,7 @@ from pathlib import Path
 
 logger = logging.getLogger("pysite")
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -163,6 +163,15 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
         cron_task.cancel()
 
     app = FastAPI(title=cfg.key or "PySite", version="2.0", lifespan=lifespan)
+
+    @app.exception_handler(HTTPException)
+    async def _http_exception_handler(request: Request, exc: HTTPException):
+        """统一 HTTP 异常为后台 api() 可识别的 {code,msg} 结构。"""
+        detail = exc.detail
+        if isinstance(detail, dict) and "code" in detail:
+            return JSONResponse(status_code=exc.status_code, content=detail, headers=exc.headers)
+        return JSONResponse(status_code=exc.status_code,
+                            content={"code": exc.status_code, "msg": str(detail)}, headers=exc.headers)
     # HTML/CSS/JS/JSON 压缩传输（nginx 只压它自己认得的类型，代理响应需要应用层兜底）
     app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=1)
     # 响应耗时采集（纯 ASGI，开销可忽略）：X-Response-Time 响应头 + 内存滑动窗口
@@ -180,6 +189,9 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
             seed_site(session, cfg, cfg.root / "storage" / "seed.json")
         finally:
             session.close()
+        # seed_site 可能因代码版本变化上调静态版本号，重新加载到 app.state
+        _, ver = _load_memory(db)
+        set_static_version(app, ver)
         _preserve_contact_template(db, cfg, app.state.theme_name)
         # 清理废弃字段：site_wechat（微信号文本框已移除，微信相关只保留 wechat_qrcode 上传位）
         session = db.session()

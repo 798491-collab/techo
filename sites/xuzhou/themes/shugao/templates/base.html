@@ -59,12 +59,12 @@
       <p class="sg-f-desc">{{ (settings.get('site_description') or site.description or site.tagline) | truncate(200, True, '…') }}</p>
     </div>
     <div class="sg-f-col">
-      <h4>服务项目</h4>
-      {% for p in footer_products[:6] %}<a href="{{ url_content(p) }}" data-bs-toggle="tooltip" data-bs-title="{{ p.title }}">{{ p.title | truncate(20) }}</a>{% endfor %}
+      <h4>{% if product_category_slug %}<a href="{{ url_category(product_category_slug) }}">服务项目</a>{% else %}服务项目{% endif %}</h4>
+      {% for p in footer_products[:6] %}<a href="{{ url_content(p) }}" data-bs-toggle="tooltip" data-bs-title="{{ p.title }}">{{ p.title | truncate(20) }}</a>{% else %}<span class="fg-secondary small">暂无服务项目</span>{% endfor %}
     </div>
     <div class="sg-f-col">
-      <h4>新闻资讯</h4>
-      {% for h in hot_contents[:4] %}<a href="{{ url_content(h) }}">{{ h.title | truncate(22) }}</a>{% endfor %}
+      <h4>{% if news_category_slug %}<a href="{{ url_category(news_category_slug) }}">新闻资讯</a>{% else %}新闻资讯{% endif %}</h4>
+      {% for h in hot_contents[:4] %}<a href="{{ url_content(h) }}">{{ h.title | truncate(22) }}</a>{% else %}<span class="fg-secondary small">暂无资讯</span>{% endfor %}
     </div>
     <div class="sg-f-col">
       <h4>联系我们</h4>
