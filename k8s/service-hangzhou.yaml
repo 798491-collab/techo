@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pysite-hangzhou
+  namespace: pysite
+  labels:
+    app: pysite-hangzhou
+spec:
+  type: ClusterIP
+  clusterIP: 10.43.100.105
+  selector:
+    app: pysite-hangzhou
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8105
+      targetPort: 8105

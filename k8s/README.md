@@ -15,17 +15,21 @@
 
 ## 端口
 
-| 站点 | 端口 |
-|---|---|
-| nanjing | 8101 |
-| hefei | 8102 |
-| xuzhou | 8103 |
-| wuxi | 8104 |
-| hangzhou | 8105 |
+| 站点 | Service ClusterIP | 端口 |
+|---|---|---|
+| nanjing | 10.43.100.101 | 8101 |
+| hefei | 10.43.100.102 | 8102 |
+| xuzhou | 10.43.100.103 | 8103 |
+| wuxi | 10.43.100.104 | 8104 |
+| hangzhou | 10.43.100.105 | 8105 |
 
 > 域名属敏感信息不入库，以服务器 nginx 反代配置与各站 `site.json` 为准。
 
-Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需改动。
+Pod 不用 `hostNetwork`/`hostPort`，改由固定 ClusterIP 的 Service 暴露；nginx 反代到 ClusterIP。
+更新策略 `RollingUpdate`（`maxUnavailable: 0`）——新旧 Pod 并存、Service 平滑切流，发版全程无 502。
+
+**真相源**：`deploy-<站>.yaml` / `service-<站>.yaml` / `scripts/nginx/*.conf` 全部由部署脚本每次 `apply`，
+线上配置自动对齐仓库，杜绝「线上与 YAML 不一致」的漂移（如曾经线上有 `cpu: 500m` 而 YAML 缺失）。
 
 ## 凭据（自动生成，无需人工设置）
 
@@ -79,10 +83,15 @@ Pod 用 `hostNetwork: true` 直接占用上述端口，nginx 反代配置无需�
 1. `git fetch + reset --hard`（更新代码，不碰 storage）
 2. 数据卷就绪检查：五站 `sites/<站点>/storage/site.db` 存在且非空（storage 是 gitignore 的
    挂载数据卷，git 不触碰；此检查只防目录结构异常，无备份/复制开销）
-3. 发版：把 commit、提交说明、发版时间写入五站 Deployment 的 Pod 模板注记（触发一次滚动
-   更新 = 一个新修订版本，代码经 hostPath 挂载，重启即生效）
-4. 等待就绪 + 五站 HTTP 200 健康检查
-5. 任一失败 → 自动回滚（代码 reset + `kubectl rollout undo` 回退修订版本）
+3. `apply` 五站 Service（ClusterIP 固定 IP，selector 先指向旧 Pod，ClusterIP 立即可用）
+4. 发版：`apply` 仓库 `deploy-<站>.yaml`（把 commit / 说明 / 时间注入 Pod 模板注记占位符），
+   YAML 是唯一真相源——resources / 探针 / 更新策略全部以此为准；触发一次滚动更新 = 一个新修订版本
+5. 同步 `scripts/nginx/*.conf` → 服务器 vhost 目录，`nginx -t` 通过后 reload，反代切到 ClusterIP
+6. 等待就绪 + 经 ClusterIP 五站 HTTP 200 健康检查
+7. 任一失败 → 自动回滚（代码 reset + `kubectl rollout undo` 回退修订版本）
+
+> 零停机关键顺序：Service 先建 → nginx 切 ClusterIP（此时旧 Pod 仍在岗）→ 再滚动替换 Deployment。
+> 若反过来先替换 Pod，nginx 仍指向旧地址会出现短暂 502。
 
 ## 发版与部署记录
 

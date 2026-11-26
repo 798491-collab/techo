@@ -8,7 +8,10 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: pysite-hangzhou
@@ -16,9 +19,12 @@ spec:
     metadata:
       labels:
         app: pysite-hangzhou
+      annotations:
+        kubernetes.io/change-cause: "发版 __COMMIT__: __SUBJECT__"
+        pysite/commit: "__COMMIT__"
+        pysite/commit-subject: "__SUBJECT__"
+        pysite/deployed-at: "__DEPLOYED_AT__"
     spec:
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -41,7 +47,6 @@ spec:
           ports:
             - name: http
               containerPort: 8105
-              hostPort: 8105
           livenessProbe:
             tcpSocket:
               port: 8105
@@ -51,7 +56,7 @@ spec:
             httpGet:
               path: /
               port: 8105
-            initialDelaySeconds: 8
+            initialDelaySeconds: 18
             periodSeconds: 15
           volumeMounts:
             - name: site
@@ -64,6 +69,7 @@ spec:
               cpu: "50m"
               memory: "64Mi"
             limits:
+              cpu: "500m"
               memory: "256Mi"
       volumes:
         - name: site

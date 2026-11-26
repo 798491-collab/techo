@@ -69,14 +69,18 @@ python start.py stop     # 停止
 
 ### 架构
 
-- 五个站点各自独立 Deployment（namespace `pysite`），`hostNetwork: true` 直接占用 8101–8105
+- 五个站点各自独立 Deployment（namespace `pysite`）+ 独立 **ClusterIP Service**（固定 IP `10.43.100.101`–`.105`，端口 8101–8105）
+- **不再使用 `hostNetwork` / `hostPort`**：Pod 用集群 IP，nginx 反代到 Service 的 ClusterIP；端口不再与宿主机绑定，无冲突风险
+- 更新策略为 **RollingUpdate（`maxUnavailable: 0`）**：新旧 Pod 并存、由 Service 平滑切流，发版**全程无 502**
 - 共用一个 Python 镜像（`python:3.10-slim`），依赖从宿主机以 hostPath 挂入
 - 数据卷：各站 `storage/`（site.db / seed.json / uploads / cache / logs / sessions / temp）在站点目录内随 hostPath 持久化
+- 仓库 `k8s/deploy-*.yaml`、`service-*.yaml`、`scripts/nginx/*.conf` 是**唯一真相源**：每次部署 `kubectl apply`，线上配置（resources / 探针 / 策略）自动与仓库对齐，不再漂移
 
 ### 自动部署
 
-- Git 推送自动部署：仓库 push → Gitee WebHook → 服务器 webhook 接收器 → 自动执行部署脚本
-- 部署脚本自动完成代码更新、数据卷检查、健康检查、滚动更新
+- Git 推送自动部署：仓库 push → Drone / Gitee WebHook → 服务器 webhook 接收器 → 自动执行部署脚本
+- 部署脚本：`apply` Service → `apply` Deployment（注入 commit 注记）→ 同步 nginx 反代并 reload → 等待就绪 → 经 ClusterIP 健康检查 → 失败自动回滚
+- 迁移顺序保证零停机：Service 先建并指向旧 Pod，nginx 切到 ClusterIP 后旧 Pod 仍可用，再滚动替换 Deployment
 
 ### 容器管理界面（KubePi）
 
@@ -93,7 +97,8 @@ kubectl -n pysite get deploy                               # 副本与可用状�
 kubectl -n pysite describe pod <pod名>                     # 重点看 Last State / Reason（OOMKilled 等）
 kubectl -n pysite logs deploy/pysite-nanjing --tail=50     # 站点日志
 kubectl -n pysite logs <pod名> --previous --tail=80        # 崩溃前一份日志
-kubectl -n pysite rollout restart deploy/pysite-nanjing    # 重启站点（会短暂 502）
+kubectl -n pysite get svc                                  # 五站 ClusterIP（10.43.100.101-.105）
+kubectl -n pysite rollout restart deploy/pysite-nanjing    # 重启站点（RollingUpdate，无 502）
 kubectl -n pysite rollout undo deploy/pysite-nanjing       # 回滚上一版本
 kubectl -n pysite delete pod -l app=pysite-nanjing --wait=true  # 强制重建 Pod
 kubectl -n pysite get events --sort-by=.metadata.creationTimestamp | tail -30
@@ -104,10 +109,11 @@ tail -f /www/wwwroot/pysite/sites/hangzhou/storage/logs/site.log      # 应用�
 tail -f /www/wwwroot/pysite/scripts/k3s-deploy.log                    # 部署日志
 tail -f /www/wwwroot/pysite/scripts/webhook.log                       # webhook / Drone 触发日志
 
-# ---------- 端口与健康 ----------
-ss -lntp | grep -E '810[1-5]'                              # 五站监听端口
-for p in 8101 8102 8103 8104 8105; do curl -s -o /dev/null -w "$p %{http_code}\n" http://127.0.0.1:$p/; done
+# ---------- 健康（经 ClusterIP，不再有宿主机 810x 监听）----------
+for i in 101 102 103 104 105; do p=$((8100 + i - 100)); curl -s -o /dev/null -w "10.43.100.$i:$p %{http_code}\n" --max-time 5 http://10.43.100.$i:$p/; done
 kubectl -n pysite get deploy pysite-hangzhou -o jsonpath='{.spec.template.spec.containers[0].resources}'
+kubectl -n pysite get deploy pysite-hangzhou -o jsonpath='{.spec.strategy}'               # 更新策略
+kubectl -n pysite get deploy pysite-hangzhou -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.initialDelaySeconds}'  # 就绪探针延迟
 
 # ---------- 从外部探测 ----------
 # 本机若设置了 HTTP_PROXY，必须加 --noproxy '*'，否则代理自身故障会伪报 502

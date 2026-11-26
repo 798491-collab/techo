@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pysite-hefei
+  namespace: pysite
+  labels:
+    app: pysite-hefei
+spec:
+  type: ClusterIP
+  clusterIP: 10.43.100.102
+  selector:
+    app: pysite-hefei
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8102
+      targetPort: 8102

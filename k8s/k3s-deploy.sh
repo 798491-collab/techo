@@ -72,17 +72,41 @@ PY
   log "默认 favicon 已同步（仓库 logo.svg -> 五站 uploads/site-logo.svg）"
 fi
 
-# 3. 发版：把 commit + 时间写入 Pod 模板注记（触发一次滚动更新 = 一个新修订版本）
-#    KubePi 的 Deployment「修订历史」里即可看到每次发版的版本号与时间，并支持一键回滚
+# 3. 应用 Service（ClusterIP 固定 IP，作为 nginx 反代入口）
+#    必须在 Deployment 之前：Service 的 selector 会先指向旧 Pod，ClusterIP 立即可用，
+#    nginx 切流后滚动更新期间新旧 Pod 都由 Service 承接，全程无 502。
+for s in $SITES; do
+  kubectl -n "$NS" apply -f "$REPO/k8s/service-$s.yaml" >/dev/null
+done
+log "五站 Service（ClusterIP）已就绪"
+
+# 4. 发版：apply 仓库 deploy YAML，让 YAML 成为唯一真相源
+#    配置（resources / 探针 / 更新策略 / hostPort 等）全部以仓库 YAML 为准，
+#    每次部署 apply 一次，消除「线上与 YAML 不一致」的配置漂移。
+#    把 commit / 说明 / 时间通过占位符注入 Pod 模板注记，触发滚动更新 = 一个新修订版本；
+#    KubePi 的 Deployment「修订历史」里即可看到版本号与时间，并支持一键回滚。
 SUBJ=$(git log -1 --format='%s' "$NEW" | sed 's/["\\]/ /g')
 AUTHOR=$(git log -1 --format='%an' "$NEW" | sed 's/["\\]/ /g')
+DEPLOY_AT=$(date '+%F %T')
 for s in $SITES; do
-  kubectl -n "$NS" patch "deployment/pysite-$s" --type=strategic -p \
-    "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kubernetes.io/change-cause\":\"发版 $NEW: $SUBJ\",\"pysite/commit\":\"$NEW\",\"pysite/commit-subject\":\"$SUBJ\",\"pysite/deployed-at\":\"$(date '+%F %T')\"}}}}}" >/dev/null
+  sed -e "s|__COMMIT__|$NEW|g" -e "s|__SUBJECT__|$SUBJ|g" -e "s|__DEPLOYED_AT__|$DEPLOY_AT|g" \
+    "$REPO/k8s/deploy-$s.yaml" | kubectl -n "$NS" apply -f - >/dev/null
 done
-log "已发版 $NEW「$SUBJ」($AUTHOR)，五站滚动更新中"
+log "已发版 $NEW「$SUBJ」($AUTHOR)，五站滚动更新中（RollingUpdate maxUnavailable=0）"
 
-# 4. 等待全部就绪（超时 120s）
+# 5. 同步 nginx 反代配置：仓库 scripts/nginx/*.conf -> 服务器 vhost 目录
+#    由 ClusterIP 承接流量（不再依赖 hostNetwork/hostPort），nginx 只在这层保留一份。
+NGINX_VHOST=/www/server/panel/vhost/nginx/pysite
+if [ -d "$NGINX_VHOST" ]; then
+  cp "$REPO"/scripts/nginx/*.conf "$NGINX_VHOST/" || log "警告：nginx 配置复制失败"
+  if nginx -t >/dev/null 2>&1; then
+    nginx -s reload >/dev/null 2>&1 && log "nginx 反代已切换到 ClusterIP 并 reload"
+  else
+    log "警告：nginx -t 校验失败，未 reload，请人工检查"
+  fi
+fi
+
+# 6. 等待全部就绪（超时 120s）
 FAILED=0
 for s in $SITES; do
   if ! kubectl -n "$NS" rollout status "deployment/pysite-$s" --timeout=120s >/dev/null 2>&1; then
@@ -91,14 +115,17 @@ for s in $SITES; do
   fi
 done
 
-# 5. 健康校验（五站首页必须 HTTP 200）
+# 7. 健康校验（经 ClusterIP 访问五站首页，必须 HTTP 200）
+#    ClusterIP 固定：nanjing .101 / hefei .102 / xuzhou .103 / wuxi .104 / hangzhou .105
 if [ "$FAILED" -eq 0 ]; then
-  i=1
+  octet=101
   for s in $SITES; do
-    port=$((8100 + i)); i=$((i + 1))
-    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:$port/")
+    ip="10.43.100.$octet"
+    port=$((8100 + octet - 100))
+    octet=$((octet + 1))
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$ip:$port/")
     if [ "$code" != "200" ]; then
-      log "健康校验失败 $s (127.0.0.1:$port) HTTP=$code"
+      log "健康校验失败 $s (ClusterIP $ip:$port) HTTP=$code"
       FAILED=1
     fi
   done

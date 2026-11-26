@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pysite-xuzhou
+  namespace: pysite
+  labels:
+    app: pysite-xuzhou
+spec:
+  type: ClusterIP
+  clusterIP: 10.43.100.103
+  selector:
+    app: pysite-xuzhou
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8103
+      targetPort: 8103
