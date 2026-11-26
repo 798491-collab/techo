@@ -33,8 +33,14 @@ steps:
       - |
         set -e
         echo "===== CI 校验 $(date '+%F %T') commit ${DRONE_COMMIT_SHA:0:8} ====="
+        # 宿主机仓库还停在上一发版，先拉取本次提交（Gitee 网络偶发抖动，带重试）
+        cd /www/wwwroot/pysite
+        for i in 1 2 3; do
+          git fetch origin main --quiet && break || { echo "fetch 第 $i 次失败，重试..."; sleep 5; }
+        done
+        git cat-file -e "$DRONE_COMMIT_SHA" || git fetch origin main --unshallow --quiet || true
         rm -rf /tmp/ci-check && mkdir -p /tmp/ci-check
-        git -C /www/wwwroot/pysite archive "$DRONE_COMMIT_SHA" | tar -x -C /tmp/ci-check
+        git archive "$DRONE_COMMIT_SHA" | tar -x -C /tmp/ci-check
         find /tmp/ci-check/sites -name '*.py' -print0 | xargs -0 -n1 python3 -m py_compile \
           && echo "五站源码编译校验通过"
         rm -rf /tmp/ci-check
