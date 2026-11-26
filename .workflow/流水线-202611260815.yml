@@ -1,8 +1,7 @@
 version: "1.0"
 name: 手动部署（Build Now）
 displayName: 手动部署（Build Now）
-# 只在页面点「运行」时触发，不随 git push 自动跑。
-# 现有 git push -> webhook -> 自动部署链路保持不动，二者互不干扰。
+
 triggers:
   trigger: manual
 notify: []
@@ -15,12 +14,18 @@ stages:
     strategy: naturally
     trigger: auto
     steps:
-      - step: shell@agent
+      - step: shell@host            # ← 关键：主机执行类型，不要写 shell@agent
         name: deploy
         displayName: 执行 k3s 部署脚本
         hostGroupID: pysite-server
         script: |
           set -e
+          LOCK=/tmp/pysite-deploy.lock
+          exec 9>"$LOCK"
+          if ! flock -n 9; then
+            echo "部署任务正在运行，拒绝重复执行"
+            exit 1
+          fi
           REPO=/www/wwwroot/pysite
           RUN=$(mktemp /tmp/pysite-deploy-XXXXXX.sh)
           cp "$REPO/k8s/k3s-deploy.sh" "$RUN"
