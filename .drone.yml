@@ -15,6 +15,7 @@ name: deploy-pysite
 trigger:
   event:
     - push
+    - custom
     - promote
     - rollback
 
@@ -24,15 +25,18 @@ clone:
   disable: true
 
 steps:
-  # ---------- push 构建：CI 校验 + 自动晋升生产 ----------
+  # ---------- push / 手动构建：CI 校验 + 自动晋升生产 ----------
   - name: 校验并晋升生产
     when:
       event:
         - push
+        - custom
     commands:
       - |
         set -e
         echo "===== CI 校验 $(date '+%F %T') commit ${DRONE_COMMIT_SHA:0:8} ====="
+        # exec runner 运行用户与仓库属主不同，需豁免 safe.directory 才能操作仓库
+        git config --global --add safe.directory /www/wwwroot/pysite
         # 宿主机仓库还停在上一发版，先拉取本次提交（Gitee 网络偶发抖动，带重试）
         cd /www/wwwroot/pysite
         for i in 1 2 3; do
