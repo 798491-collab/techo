@@ -7,6 +7,7 @@ import threading
 from datetime import datetime
 
 from fastapi import APIRouter, Request
+from app.core.oplog import client_ip
 from sqlalchemy import or_, select
 
 from app.core.database import Content, FormRecord, Member, Message
@@ -85,7 +86,7 @@ async def submit_message(request: Request, payload: dict):
         msg = Message(name=str(payload.get("name", ""))[:64], phone=str(payload.get("phone", ""))[:32],
                       email=str(payload.get("email", ""))[:128], company=str(payload.get("company", ""))[:128],
                       content=str(payload.get("content", ""))[:5000],
-                      ip=request.client.host if request.client else "")
+                      ip=client_ip(request))
         session.add(msg)
         session.commit()
         return ok(msg.id, "提交成功，我们会尽快与您联系")
@@ -110,7 +111,7 @@ async def submit_form(code: str, request: Request, payload: dict):
                 return {"code": 20003, "msg": "该表单需要登录后才能提交"}
         record = FormRecord(form_id=form.id, form_model_id=form.id, member_id=member_id,
                             data=jdumps(payload),
-                            ip=request.client.host if request.client else "")
+                            ip=client_ip(request))
         session.add(record)
         session.commit()
         if form.notify_email:

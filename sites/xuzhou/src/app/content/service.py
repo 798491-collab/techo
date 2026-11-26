@@ -12,6 +12,7 @@ from typing import Any, Type
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.oplog import track_log
 from app.core.database import (
     AdminUser, AdminRole, AdminPermission, Category, Content, ContentType, FormModel, Media, Message, OperationLog,
     Setting, Tag,
@@ -166,7 +167,7 @@ def password_valid(db: Session, pwd: str) -> bool:
 
 # ---------------- 静态资源版本号（清缓存时 +1） ----------------
 STATIC_VERSION_KEY = "static_version"
-CODE_VERSION = "20261126-rbac-theme"
+CODE_VERSION = "20261126-oplog-model"
 
 
 def get_static_version(db: Session) -> str:
@@ -307,8 +308,12 @@ def delete_items(db: Session, model: Type, ids: list[int]) -> int:
 
 
 def log_op(db: Session, username: str, module: str, action: str, target: str = "", detail: str = "", ip: str = ""):
-    db.add(OperationLog(admin_user=username, module=module, action=action,
-                        target=str(target), detail=str(detail)[:1000], ip=ip))
+    """写入操作日志；行 id 记入请求级上下文，中间件随后回填响应摘要与真实 IP。"""
+    row = OperationLog(admin_user=username, module=module, action=action,
+                       target=str(target), detail=str(detail)[:600], ip=ip)
+    db.add(row)
+    db.flush()
+    track_log(row.id)
     db.commit()
 
 

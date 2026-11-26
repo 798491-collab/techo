@@ -17,15 +17,105 @@ logger = logging.getLogger("pysite")
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from app.core.cache import FileCache
 from app.core.perf import PerfStats, ResponseTimeMiddleware
-from app.core.database import Database, Setting
+from app.core.database import Database, OperationLog, Setting
+from app.core.oplog import OPLOG_IDS, client_ip
 from app.core.settings import ADMIN_DIR, THEMES_ROOT, Settings, load_settings
 from app.core.state import set_static_version, set_theme
 from app.content.service import publish_due, seed_site
+
+
+class AdminOpLogMiddleware(BaseHTTPMiddleware):
+    """后台写操作统一审计：记录 请求体/响应体 摘要 + 真实客户端 IP。
+
+    设计约束（避免破坏流式与内存开销）：
+    - 仅处理 /api/admin/* 的 POST/PUT/DELETE/PATCH；
+    - multipart 上传与超大请求体（>64KB）不缓存 body；
+    - 流式响应（StreamingResponse / SSE / 大文件）不读取响应体，只记状态码；
+    - 响应体超过 64KB 同样只记状态码；
+    - 登录等含密码字段自动打码。
+    """
+
+    MAX_BODY = 65536
+
+    def __init__(self, app):
+        super().__init__(app)
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if not path.startswith("/api/admin/") or request.method not in ("POST", "PUT", "DELETE", "PATCH"):
+            return await call_next(request)
+
+        req_snip = ""
+        try:
+            ctype = request.headers.get("content-type", "")
+            clen = int(request.headers.get("content-length", "0") or 0)
+            if "multipart/form-data" not in ctype and 0 < clen <= self.MAX_BODY:
+                raw = await request.body()
+                req_snip = self._redact(path, raw.decode("utf-8", "replace"))[:500]
+        except Exception:
+            req_snip = ""
+
+        token = OPLOG_IDS.set([])
+        status, resp_snip = 500, ""
+        try:
+            resp = await call_next(request)
+            status = resp.status_code
+            rcl = resp.headers.get("content-length", "")
+            rtype = resp.headers.get("content-type", "")
+            is_stream = isinstance(resp, StreamingResponse) or "stream" in rtype or "event-stream" in rtype
+            if (not is_stream) and rcl and rcl.isdigit() and int(rcl) <= self.MAX_BODY:
+                chunks = []
+                async for chunk in resp.body_iterator:  # 只缓冲小响应，随后原样重建
+                    chunks.append(chunk)
+                raw = b"".join(chunks)
+                resp_snip = self._redact(path, raw.decode("utf-8", "replace"))[:1200]
+                headers = {k: v for k, v in resp.headers.items() if k.lower() != "content-length"}
+                resp = Response(content=raw, status_code=status, headers=headers, media_type=rtype or None)
+            else:
+                resp_snip = "<流式/大响应 未记录正文>"
+            return resp
+        except Exception as exc:
+            status, resp_snip = 500, f"<异常 {type(exc).__name__}>"
+            raise
+        finally:
+            ids = list(OPLOG_IDS.get())
+            OPLOG_IDS.reset(token)
+            if ids:
+                try:
+                    self._flush(request, ids, status, req_snip, resp_snip)
+                except Exception:
+                    pass
+
+    @staticmethod
+    def _redact(path: str, text: str) -> str:
+        """密码字段打码；登录请求整体不记录请求体。"""
+        if path.rstrip("/").endswith("/login"):
+            return "<登录请求不记录正文>"
+        import re as _re
+        return _re.sub(r'("password[^"]*"\s*:\s*")[^"]*"', r'\1***', text)
+
+    def _flush(self, request: Request, ids: list, status: int, req_snip: str, resp_snip: str):
+        ip = client_ip(request)
+        session = request.app.state.db.session()
+        try:
+            rows = session.scalars(
+                select(OperationLog).where(OperationLog.id.in_(ids))).all()
+            for r in rows:
+                extra = f" | 请求: {req_snip}" if req_snip else ""
+                extra += f" | 响应[{status}]: {resp_snip}" if resp_snip else f" | 响应[{status}]"
+                r.detail = ((r.detail or "") + extra)[:2000]
+                if ip:
+                    r.ip = ip  # 修正反代场景下的真实客户端 IP
+            session.commit()
+        finally:
+            session.close()
 
 
 def _safe_file(base: Path, rel: str) -> Path | None:
@@ -172,6 +262,8 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
             return JSONResponse(status_code=exc.status_code, content=detail, headers=exc.headers)
         return JSONResponse(status_code=exc.status_code,
                             content={"code": exc.status_code, "msg": str(detail)}, headers=exc.headers)
+    # 后台写操作审计（先注册 = 最内层，看到的是未压缩响应；GZip 在其外层）
+    app.add_middleware(AdminOpLogMiddleware)
     # HTML/CSS/JS/JSON 压缩传输（nginx 只压它自己认得的类型，代理响应需要应用层兜底）
     app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=1)
     # 响应耗时采集（纯 ASGI，开销可忽略）：X-Response-Time 响应头 + 内存滑动窗口

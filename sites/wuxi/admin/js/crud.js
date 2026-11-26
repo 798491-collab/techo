@@ -354,6 +354,11 @@ window.Crud = (function(){
         else if(state.resource==='media' && col.key==='size') v=formatSize(row.size);
         else if(state.resource==='media' && col.key==='uploader') v=`<i class="bi bi-person fg-secondary"></i> ${esc(row.uploader||'系统')}`;
         else if(col.key==='form_type') v=`<span class="badge-soft"><i class="bi bi-input-cursor-text"></i> ${esc(row.form_type||'—')}</span>`;
+        else if(col.key==='model'){
+          /* 需求：内容模型列显示模型名称（后端回填 model_name），不显示标识 */
+          const mn=row.model_name||row.model||'';
+          v=mn?`<span class="badge-soft"><i class="bi bi-diagram-3"></i> ${esc(mn)}</span>`:'<span class="fg-secondary">—</span>';
+        }
         else if(col.key==='category_id') v=row.category_name?`<span class="badge-soft">${esc(row.category_name)}</span>`:'<span class="fg-secondary">—</span>';
         else if(col.key==='data'){
           /* 表单提交记录：按表单字段配置可视化渲染（label：value 徽标），不再显示 JSON */

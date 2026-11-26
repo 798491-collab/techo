@@ -27,6 +27,7 @@ from app.core.database import (
     Site, SiteVar, Region,
 )
 from app.core.security import hash_password, make_token, parse_token, verify_password
+from app.core.oplog import client_ip
 from app.content.service import (
     bump_static_version, create_item, delete_items, get_item, get_password_rule, jloads, log_op,
     paginate, password_valid, seed_site, to_dict, update_item, MENU_DEFS,
@@ -156,8 +157,8 @@ async def login(request: Request, payload: dict):
         user.prev_login_at = user.last_login_at
         user.prev_login_ip = user.last_login_ip
         user.last_login_at = datetime.now()
-        client_ip = request.client.host if request.client else ""
-        user.last_login_ip = client_ip
+        login_ip = client_ip(request)
+        user.last_login_ip = login_ip
         session.commit()
         token = make_token(cfg.secret, user.username)
         return ok({"token": token, "username": user.username,
@@ -208,7 +209,7 @@ async def cache_clear(request: Request, username: str = Depends(current_admin), 
     from app.core.state import set_static_version
     set_static_version(request.app, ver)
     log_op(db, username, "system", "clear_cache", "", f"清理缓存，静态资源版本 v{ver}",
-           request.client.host if request.client else "")
+           client_ip(request))
     return ok({"version": ver}, f"缓存已清理，静态资源版本已更新为 v{ver}")
 
 
@@ -678,7 +679,9 @@ def build_config(resource: str, title: str = "", force_model: str | None = None,
     columns = [{"key": c, "label": column_labels.get(c, FIELD_META.get(c, (c, "text"))[0])} for c in show_cols]
     filters = [{"key": "keyword", "label": "关键词", "type": "text"}]
     if "model" in cols:
-        filters.append({"key": "model", "label": "内容模型", "type": "select", "options": MODEL_OPTIONS})
+        # 需求：所有展示内容模型的地方用模型名称（来自内容模型表），不写死标识
+        filters.append({"key": "model", "label": "内容模型", "type": "select",
+                        "options": enabled_model_options or MODEL_OPTIONS})
     if "status" in cols:
         st = STATUS_OPTIONS if resource in {"content"} else ENABLE_OPTIONS
         filters.append({"key": "status", "label": "状态", "type": "select", "options": st})
@@ -1013,6 +1016,12 @@ async def crud_list(request: Request, resource: str, db: Session = Depends(get_d
             if isinstance(ex, dict):
                 for k, v in ex.items():
                     row["x_" + str(k)] = v
+    if resource in {"content", "category"}:
+        # 需求：列表「内容模型」列显示模型名称（如 新闻/单页），不显示模型标识（article/page）
+        names = {ct.code: ct.name for ct in db.scalars(select(ContentType)).all()}
+        for row in data["list"]:
+            code = str(row.get("model") or "")
+            row["model_name"] = names.get(code, code)
     if resource == "media":
         # 上传人：admin_user_id -> nickname/username；历史数据为 0 显示「系统」
         users = {u.id: (u.nickname or u.username) for u in db.scalars(select(AdminUser)).all()}
@@ -1251,7 +1260,7 @@ async def crud_save(request: Request, resource: str, payload: dict, db: Session 
     _, _, cache = ctx(request)
     cache.clear()
     log_op(db, username, resource, action, str(item_id or row.get("id")), str(payload)[:500],
-           request.client.host if request.client else "")
+           client_ip(request))
     return ok(row, "保存成功")
 
 
@@ -1276,7 +1285,7 @@ async def crud_delete(request: Request, resource: str, payload: dict, db: Sessio
         n = delete_items(db, model, ids)
     _, _, cache = ctx(request)
     cache.clear()
-    log_op(db, username, resource, "delete", str(ids), f"删除 {n} 条", request.client.host if request.client else "")
+    log_op(db, username, resource, "delete", str(ids), f"删除 {n} 条", client_ip(request))
     return ok({"deleted": n}, "删除成功")
 
 
@@ -1495,7 +1504,7 @@ async def save_profile(request: Request, payload: dict, username: str = Depends(
         user.password_hash = hash_password(new_pwd)
     db.commit()
     log_op(db, username, "profile", "edit", username, "更新个人资料",
-           request.client.host if request.client else "")
+           client_ip(request))
     return ok(None, "保存成功")
 
 
