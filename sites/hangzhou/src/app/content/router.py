@@ -29,7 +29,7 @@ from app.core.database import (
 from app.core.security import hash_password, make_token, parse_token, verify_password
 from app.content.service import (
     bump_static_version, create_item, delete_items, get_item, get_password_rule, jloads, log_op,
-    paginate, password_valid, seed_site, to_dict, update_item,
+    paginate, password_valid, seed_site, to_dict, update_item, MENU_DEFS,
 )
 
 from app.accounts.router import router
@@ -211,58 +211,16 @@ async def change_password(request: Request, payload: dict, username: str = Depen
 
 
 # ---------------- 菜单（动态，含全部定稿菜单） ----------------
-MENU = [
-    {"key": "dashboard", "name": "仪表盘", "icon": "bi-speedometer2", "group": "概览"},
-    {"key": "station-site", "name": "站点列表", "icon": "bi-diagram-3", "group": "站群管理"},
-    {"key": "station-region", "name": "地区库", "icon": "bi-geo-alt", "group": "站群管理"},
-    {"key": "station-generate", "name": "批量生成", "icon": "bi-ui-checks-grid", "group": "站群管理"},
-    {"key": "station-sync", "name": "站群同步", "icon": "bi-arrow-left-right", "group": "站群管理"},
-    {"key": "station-setting", "name": "站群设置", "icon": "bi-sliders", "group": "站群管理"},
-    {"key": "content-category", "name": "分类", "icon": "bi-folder", "group": "内容管理"},
-    {"key": "content-article", "name": "文章", "icon": "bi-file-earmark-text", "group": "内容管理"},
-    {"key": "content-product", "name": "产品", "icon": "bi-box", "group": "内容管理"},
-    {"key": "content-case", "name": "案例", "icon": "bi-briefcase", "group": "内容管理"},
-    {"key": "content-banner", "name": "banner管理", "icon": "bi-images", "group": "内容管理"},
-    {"key": "content-recycle", "name": "回收站", "icon": "bi-trash3", "group": "内容管理"},
-    {"key": "media", "name": "素材库", "icon": "bi-images", "group": "素材库"},
-    {"key": "member-list", "name": "会员列表", "icon": "bi-people", "group": "会员管理"},
-    {"key": "member-group", "name": "会员分组", "icon": "bi-person-badge", "group": "会员管理"},
-    {"key": "member-level", "name": "会员等级", "icon": "bi-mortarboard", "group": "会员管理"},
-    {"key": "member-balance-log", "name": "余额流水", "icon": "bi-cash-coin", "group": "会员管理"},
-    {"key": "member-point-log", "name": "积分流水", "icon": "bi-stars", "group": "会员管理"},
-    {"key": "order-list", "name": "订单列表", "icon": "bi-cart-check", "group": "订单与支付"},
-    {"key": "order-refund", "name": "退款记录", "icon": "bi-arrow-return-left", "group": "订单与支付"},
-    {"key": "order-pay-setting", "name": "支付配置", "icon": "bi-credit-card", "group": "订单与支付"},
-    {"key": "form-model", "name": "表单模型", "icon": "bi-input-cursor-text", "group": "自定义表单"},
-    {"key": "form-record", "name": "提交记录", "icon": "bi-envelope-paper", "group": "自定义表单"},
-    {"key": "comment", "name": "评论列表", "icon": "bi-chat-dots", "group": "评论管理"},
-    {"key": "tool-task", "name": "定时任务", "icon": "bi-alarm", "group": "运维工具"},
-    {"key": "tool-task-log", "name": "任务日志", "icon": "bi-list-ul", "group": "运维工具"},
-    {"key": "tool-seo", "name": "SEO配置", "icon": "bi-globe", "group": "运维工具"},
-    {"key": "auth-admin-user", "name": "管理员列表", "icon": "bi-person-gear", "group": "权限管理"},
-    {"key": "auth-role", "name": "角色管理", "icon": "bi-shield", "group": "权限管理"},
-    {"key": "auth-permission", "name": "权限节点", "icon": "bi-shield-lock", "group": "权限管理"},
-    {"key": "setting-basic", "name": "基础设置", "icon": "bi-gear", "group": "系统设置"},
-    {"key": "setting-switch", "name": "系统开关", "icon": "bi-toggle-on", "group": "系统设置"},
-    {"key": "setting-lang", "name": "多语言管理", "icon": "bi-translate", "group": "系统设置"},
-    {"key": "setting-lang-package", "name": "语言包管理", "icon": "bi-card-text", "group": "系统设置"},
-    {"key": "setting-upload", "name": "上传设置", "icon": "bi-cloud-upload", "group": "系统设置"},
-    {"key": "setting-sms", "name": "短信设置", "icon": "bi-chat-square-text", "group": "系统设置"},
-    {"key": "setting-email", "name": "邮箱配置", "icon": "bi-envelope-at", "group": "系统设置"},
-    {"key": "setting-security", "name": "安全设置", "icon": "bi-lock", "group": "系统设置"},
-    {"key": "setting-log", "name": "操作日志", "icon": "bi-clock-history", "group": "系统设置"},
-    {"key": "dev-content-model", "name": "内容模型", "icon": "bi-diagram-3", "group": "开发管理"},
-    {"key": "dev-theme", "name": "主题管理", "icon": "bi-palette", "group": "开发管理"},
-    {"key": "dev-plugin", "name": "插件管理", "icon": "bi-puzzle", "group": "开发管理"},
-    {"key": "dev-openapi", "name": "开放API", "icon": "bi-braces", "group": "开发管理"},
-    {"key": "dev-health", "name": "健康检查", "icon": "bi-heart-pulse", "group": "开发管理"},
-]
+MENU = [dict(m) for m in MENU_DEFS]  # 权威数据见 service.MENU_DEFS
 
 
 # 分组/菜单开关映射：Setting 中对应 key 为 "0" 时隐藏该组菜单
+# 值为列表：组内任一开关关闭即隐藏整组（新菜单把会员/订单、表单/评论合并到同一分组）
 GROUP_SWITCH = {
-    "站群管理": "menu_station", "会员管理": "menu_member", "订单与支付": "menu_order",
-    "评论管理": "menu_comment", "开发管理": "menu_dev",
+    "站群管理": ["menu_station"],
+    "会员财务": ["menu_member", "menu_order"],
+    "互动表单": ["menu_comment"],
+    "开发管理": ["menu_dev"],
 }
 MENU_SWITCH = {
     "setting-lang": "menu_lang", "setting-lang-package": "menu_lang",
@@ -308,7 +266,8 @@ async def menu(request: Request, username: str = Depends(current_admin)):
     # 需求：所有启用的内容模型都要出现在「内容管理」菜单下（如单页 page）。
     # 静态 MENU 只覆盖 article/product/case/banner，其余模型动态生成 content-{code} 菜单，
     # 插入在「回收站」之前；禁用模型不显示。
-    STATIC_MODEL_CODES = {"article", "product", "case", "banner"}
+    # 静态菜单里已固定名称的内容模型：名称以 MENU 为准，不跟随模型名，也不重复生成动态项
+    STATIC_MODEL_CODES = {"article", "product", "case", "banner", "page"}
     SKIP_CODES = {"category", "recycle"}  # category/recycle 是功能菜单不是模型
     dynamic_model_items = [
         {"key": f"content-{ct.code}", "name": ct.name, "icon": ct.icon or "bi-file-earmark"}
@@ -320,22 +279,26 @@ async def menu(request: Request, username: str = Depends(current_admin)):
     order = []
     for m in MENU:
         g = m["group"]
-        # 分组级开关
+        # 分组级开关（值可为字符串或列表；列表中任一开关关闭即隐藏整组）
         gsw = GROUP_SWITCH.get(g)
-        if gsw and not enabled(gsw):
-            continue
+        if gsw:
+            keys = [gsw] if isinstance(gsw, str) else gsw
+            if not all(enabled(k) for k in keys):
+                continue
         # 菜单级开关
         msw = MENU_SWITCH.get(m["key"])
         if msw and not enabled(msw):
             continue
         item = {k: v for k, v in m.items() if k != "group"}
-        # content-{code} 菜单绑定内容模型
+        # content-{code} 菜单绑定内容模型（只校验启用状态；静态模型名以 MENU 为准，动态模型名跟随模型）
         if m["key"].startswith("content-"):
-            ct = models_by_code.get(m["key"][8:])
+            code = m["key"][8:]
+            ct = models_by_code.get(code)
             if ct is not None:
                 if not int(ct.status or 0):
                     continue  # 模型已禁用：对应菜单不显示
-                item["name"] = ct.name  # 菜单名跟随模型名（如 banner）
+                if code not in STATIC_MODEL_CODES:
+                    item["name"] = ct.name  # 非静态模型：菜单名跟随模型名
         # 回收站之前插入动态模型菜单
         if m["key"] == "content-recycle" and dynamic_model_items:
             if g not in groups:

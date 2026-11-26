@@ -46,13 +46,13 @@ window.Crud = (function(){
     el.innerHTML = skeletonTable();
     const cfg = await api('/api/admin/crud/config?key='+encodeURIComponent(key));
     if (!cfg.data || !cfg.data.columns) { toast('该模块配置不存在','error'); return; }
-    state = {key, resource:cfg.data.model, page:1, size:cfg.data.size||15, filters:{...(cfg.data.fixed_filter||{})}, config:cfg.data, title:title||cfg.data.title};
+    state = {key, resource:cfg.data.model, page:1, size:cfg.data.size||10, filters:{...(cfg.data.fixed_filter||{})}, config:cfg.data, title:title||cfg.data.title};
     render();
   }
 
   async function load(silent){
     const {resource, page, size, filters, config} = state;
-    const params = {page, size: size || 15, ...filters};
+    const params = {page, size: size || 10, ...filters};
     if(config.recycle) params.recycle=1;
     const tbody = document.getElementById('crud-body');
     if(!silent && tbody) tbody.innerHTML = `<tr><td colspan="${config.columns.length+2}" class="p-3">${skRows(6)}</td></tr>`;
@@ -99,7 +99,7 @@ window.Crud = (function(){
 
   function render(){
     const c = state.config;
-    if(state.size==null) state.size = c.size || 15;
+    if(state.size==null) state.size = c.size || 10;
     const isMedia = state.resource==='media';
     const filtersHtml = (c.filters||[]).map(f=>{
       if(f.key==='model'&&c.fixed_filter?.model) return '';
@@ -312,7 +312,7 @@ window.Crud = (function(){
         }).join(''):'<div class="list-empty" style="grid-column:1/-1"><i class="bi bi-inbox"></i>暂无素材</div>';
       }
       C.renderPager(document.getElementById('crud-pager'), {
-        page: state.page, size: data.size||state.size||15, total: data.total||0,
+        page: state.page, size: data.size||state.size||10, total: data.total||0,
         onGo: (p)=>{ state.page=p; load(); }, onSize: (s)=>{ state.size=s; state.page=1; load(); },
       });
       updateSelected();
@@ -389,7 +389,7 @@ window.Crud = (function(){
       <td class="text-nowrap"><div class="d-flex gap-1">${actBtns}</div></td>
     </tr>`;}).join('');
     C.renderPager(document.getElementById('crud-pager'), {
-      page: state.page, size: data.size||state.size||15, total: data.total||0,
+      page: state.page, size: data.size||state.size||10, total: data.total||0,
       onGo: (p)=>{ state.page=p; load(); },
       onSize: (s)=>{ state.size=s; state.page=1; load(); },
     });

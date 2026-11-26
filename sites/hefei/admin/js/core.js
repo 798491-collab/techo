@@ -197,7 +197,7 @@ window.CMS = (function(){
   /* ---------- 统一表格分页（pyui-pager：统计 + 每页条数 + 页码 + 跳转） ---------- */
   function renderPager(el, opts){
     if(!el) return;
-    const {page=1, size=15, total=0, onGo, onSize} = opts||{};
+    const {page=1, size=10, total=0, onGo, onSize} = opts||{};
     const pages = Math.max(1, Math.ceil(total/size));
     const cur = Math.min(Math.max(1,page), pages);
     const from = total===0 ? 0 : (cur-1)*size+1;
@@ -236,7 +236,7 @@ window.CMS = (function(){
     if(jumpInput) jumpInput.onkeydown=(e)=>{ if(e.key==='Enter'){ e.preventDefault(); doJump(); } };
   }
   function sizeOptions(size){
-    return [10,15,20,30,50,100].map(n=>`<option value="${n}" ${n===size?'selected':''}>${n}</option>`).join('');
+    return [10,20,30,50,100].map(n=>`<option value="${n}" ${n===size?'selected':''}>${n}</option>`).join('');
   }
   function applyTheme(t){
     t = t || localStorage.getItem('cms_theme') || 'light';

@@ -18,6 +18,56 @@ from app.core.database import (
 )
 from app.core.security import hash_password
 
+# 菜单权威数据（分组/名称/图标/key）：router 菜单接口与权限节点对齐共用同一份，避免漂移
+MENU_DEFS = [
+    {"key": "dashboard", "name": "仪表盘", "icon": "bi-speedometer2", "group": "概览"},
+    {"key": "station-site", "name": "站点列表", "icon": "bi-diagram-3", "group": "站群管理"},
+    {"key": "station-region", "name": "地区库", "icon": "bi-geo-alt", "group": "站群管理"},
+    {"key": "station-generate", "name": "批量生成", "icon": "bi-ui-checks-grid", "group": "站群管理"},
+    {"key": "station-sync", "name": "站群同步", "icon": "bi-arrow-left-right", "group": "站群管理"},
+    {"key": "station-setting", "name": "站群设置", "icon": "bi-sliders", "group": "站群管理"},
+    {"key": "content-category", "name": "分类", "icon": "bi-folder", "group": "内容管理"},
+    {"key": "content-article", "name": "新闻", "icon": "bi-file-earmark-text", "group": "内容管理"},
+    {"key": "content-product", "name": "项目", "icon": "bi-box", "group": "内容管理"},
+    {"key": "content-case", "name": "案例", "icon": "bi-briefcase", "group": "内容管理"},
+    {"key": "content-banner", "name": "Banner", "icon": "bi-images", "group": "内容管理"},
+    {"key": "content-page", "name": "页面", "icon": "bi-file-earmark", "group": "内容管理"},
+    {"key": "content-recycle", "name": "回收站", "icon": "bi-trash3", "group": "内容管理"},
+    {"key": "media", "name": "素材库", "icon": "bi-images", "group": "内容管理"},
+    {"key": "member-list", "name": "会员列表", "icon": "bi-people", "group": "会员财务"},
+    {"key": "member-group", "name": "会员分组", "icon": "bi-person-badge", "group": "会员财务"},
+    {"key": "member-level", "name": "会员等级", "icon": "bi-mortarboard", "group": "会员财务"},
+    {"key": "member-balance-log", "name": "余额流水", "icon": "bi-cash-coin", "group": "会员财务"},
+    {"key": "member-point-log", "name": "积分流水", "icon": "bi-stars", "group": "会员财务"},
+    {"key": "order-list", "name": "订单列表", "icon": "bi-cart-check", "group": "会员财务"},
+    {"key": "order-refund", "name": "退款记录", "icon": "bi-arrow-return-left", "group": "会员财务"},
+    {"key": "order-pay-setting", "name": "支付配置", "icon": "bi-credit-card", "group": "会员财务"},
+    {"key": "form-model", "name": "表单模型", "icon": "bi-input-cursor-text", "group": "互动表单"},
+    {"key": "form-record", "name": "提交记录", "icon": "bi-envelope-paper", "group": "互动表单"},
+    {"key": "comment", "name": "评论列表", "icon": "bi-chat-dots", "group": "互动表单"},
+    {"key": "tool-task", "name": "定时任务", "icon": "bi-alarm", "group": "运维工具"},
+    {"key": "tool-task-log", "name": "任务日志", "icon": "bi-list-ul", "group": "运维工具"},
+    {"key": "tool-seo", "name": "SEO配置", "icon": "bi-globe", "group": "运维工具"},
+    {"key": "auth-admin-user", "name": "管理员列表", "icon": "bi-person-gear", "group": "权限与安全"},
+    {"key": "auth-role", "name": "角色管理", "icon": "bi-shield", "group": "权限与安全"},
+    {"key": "auth-permission", "name": "权限节点", "icon": "bi-shield-lock", "group": "权限与安全"},
+    {"key": "setting-security", "name": "安全设置", "icon": "bi-lock", "group": "权限与安全"},
+    {"key": "setting-log", "name": "操作日志", "icon": "bi-clock-history", "group": "权限与安全"},
+    {"key": "setting-basic", "name": "基础设置", "icon": "bi-gear", "group": "系统配置"},
+    {"key": "setting-switch", "name": "系统开关", "icon": "bi-toggle-on", "group": "系统配置"},
+    {"key": "setting-lang", "name": "多语言管理", "icon": "bi-translate", "group": "系统配置"},
+    {"key": "setting-lang-package", "name": "语言包管理", "icon": "bi-card-text", "group": "系统配置"},
+    {"key": "setting-upload", "name": "上传设置", "icon": "bi-cloud-upload", "group": "系统配置"},
+    {"key": "setting-sms", "name": "短信设置", "icon": "bi-chat-square-text", "group": "系统配置"},
+    {"key": "setting-email", "name": "邮箱配置", "icon": "bi-envelope-at", "group": "系统配置"},
+    {"key": "dev-content-model", "name": "内容模型", "icon": "bi-diagram-3", "group": "开发管理"},
+    {"key": "dev-theme", "name": "主题管理", "icon": "bi-palette", "group": "开发管理"},
+    {"key": "dev-plugin", "name": "插件管理", "icon": "bi-puzzle", "group": "开发管理"},
+    {"key": "dev-openapi", "name": "开放API", "icon": "bi-braces", "group": "开发管理"},
+    {"key": "dev-health", "name": "健康检查", "icon": "bi-heart-pulse", "group": "开发管理"},
+]
+
+
 
 def to_dict(obj: Any, exclude: tuple[str, ...] = ()) -> dict:
     if obj is None:
@@ -262,6 +312,75 @@ def render_save_dir(template: str, file_type: str) -> str:
     out = "".join(ch for ch in out if ch.isalnum() or ch in "/-_.")
     parts = [p for p in out.split("/") if p and p not in (".", "..")]
     return "/".join(parts) or file_type
+
+
+def _align_permission_tree(db: Session) -> int:
+    """按 MENU_DEFS 对齐权限节点树（分组+菜单项）；button/特权节点保留并重挂。
+    返回变更条数。结构未变时零改动，保持 id 稳定。"""
+    # 扁平 MENU_DEFS 按 group 聚合 -> 分组顺序 + 组内菜单项
+    groups: dict[str, list[dict]] = {}
+    for m in MENU_DEFS:
+        groups.setdefault(m["group"], []).append(m)
+    # 期望 menu 节点：(name, key, pid_key, sort, icon)
+    expected: list[tuple[str, str, str, int, str]] = []
+    group_icons: dict[str, str] = {}
+    for gi, (gname, items) in enumerate(groups.items(), 1):
+        gkey = "group:" + gname
+        gicon = items[0]["icon"] if items else "bi-menu-btn-wide"
+        group_icons[gkey] = gicon
+        expected.append((gname, gkey, "", gi, gicon))
+        for mi, item in enumerate(items, 1):
+            expected.append((item["name"], item["key"], gkey, mi, item["icon"]))
+    group_keys = [k for k in group_icons]
+
+    # 特权/按钮节点：统一纳入对齐（menu() 里的 EXTRA_PERMS 因 key 已存在不会重复补种）
+    # (name, key, 归属分组名, sort, icon, type)
+    priv = [
+        ("邮箱配置", "setting.email", "系统配置", 6, "bi-envelope-at", "button"),
+        ("AI插件管理", "ai.plugin", "开发管理", 4, "bi-robot", "button"),
+        ("AI添加内容", "ai.add", "开发管理", 4, "bi-robot", "button"),
+        ("新增内容", "content.add", "内容管理", 1, "bi-plus-lg", "button"),
+        ("编辑内容", "content.edit", "内容管理", 2, "bi-pencil", "button"),
+        ("删除内容", "content.delete", "内容管理", 3, "bi-trash", "button"),
+    ]
+    priv_keys = {pnode[1] for pnode in priv}
+    existing = db.scalars(select(AdminPermission)).all()
+    # 所有"受管节点"= 菜单树 + 特权节点；签名比对 key+name，结构中任一变化即重建
+    managed_keys = {e[1] for e in expected} | priv_keys
+    managed = {r.key: r for r in existing if r.key in managed_keys}
+    sig_now = tuple(sorted((k, r.name or "") for k, r in managed.items()))
+    want_names = {e[1]: e[0] for e in expected}
+    want_names.update({pnode[1]: pnode[0] for pnode in priv})
+    sig_want = tuple(sorted(want_names.items()))
+    if sig_now == sig_want:
+        return 0  # 幂等：结构一致，不动（id 稳定）
+
+    changed = 0
+    for r in managed.values():
+        db.delete(r)
+    db.flush()
+
+    group_id: dict[str, int] = {}
+    for name, key, _pk, sort, icon in expected:
+        if key.startswith("group:"):
+            row = AdminPermission(name=name, key=key, pid=0, type="menu", path="",
+                                  icon=icon, sort=sort, status=1)
+            db.add(row); db.flush()
+            group_id[key] = row.id
+            changed += 1
+    for name, key, pk, sort, icon in expected:
+        if key.startswith("group:"):
+            continue
+        db.add(AdminPermission(name=name, key=key, pid=group_id.get(pk, 0),
+                               type="menu", path="", icon=icon, sort=sort, status=1))
+        changed += 1
+    # 特权/按钮节点挂到对应分组
+    for name, key, gname, sort, icon, typ in priv:
+        gkey = "group:" + gname
+        db.add(AdminPermission(name=name, key=key, pid=group_id.get(gkey, 0),
+                               type=typ, path="", icon=icon, sort=sort, status=1))
+        changed += 1
+    return changed
 
 
 def seed_site(db: Session, cfg, seed_file: Path, force: bool = False) -> dict:
@@ -538,36 +657,23 @@ def seed_site(db: Session, cfg, seed_file: Path, force: bool = False) -> dict:
             db.add(FormModel(**payload))
             result["forms"] = result.get("forms", 0) + 1
 
-    # 角色（幂等）
+    # 角色（幂等创建；rules 跟随新菜单 key 对齐更新）
     roles = [
-        ("超级管理员", "super", ["*"]),
-        ("内容编辑", "editor", ["dashboard", "content-article", "content-product", "content-case", "content-category", "media"]),
-        ("运营专员", "operator", ["dashboard", "member-list", "order-list", "comment", "form-record"]),
+        ("超级管理员", ["*"]),
+        ("内容编辑", ["dashboard", "content-article", "content-product", "content-case",
+                      "content-category", "content-banner", "content-page", "media"]),
+        ("运营专员", ["dashboard", "member-list", "order-list", "comment", "form-record"]),
     ]
-    for name, _code, rules in roles:
-        if not db.scalar(select(AdminRole).where(AdminRole.name == name)):
+    for name, rules in roles:
+        role = db.scalar(select(AdminRole).where(AdminRole.name == name))
+        if role is None:
             db.add(AdminRole(name=name, rules=jdumps(rules), site_ids="[]", status=1))
             result["roles"] = result.get("roles", 0) + 1
+        elif role.rules != jdumps(rules):
+            role.rules = jdumps(rules)  # 对齐新菜单 key
 
-    # 权限节点（幂等，按 key）
-    perms = [
-        ("控制台", "dashboard", 0, "menu", "bi-speedometer2", 1),
-        ("站群管理", "station", 0, "menu", "bi-diagram-3", 2),
-        ("内容管理", "content", 0, "menu", "bi-file-earmark-text", 3),
-        ("素材库", "media", 0, "menu", "bi-images", 4),
-        ("会员管理", "member", 0, "menu", "bi-people", 5),
-        ("订单管理", "order", 0, "menu", "bi-cart-check", 6),
-        ("评论管理", "comment", 0, "menu", "bi-chat-dots", 7),
-        ("系统设置", "setting", 0, "menu", "bi-gear", 8),
-        ("开发管理", "dev", 0, "menu", "bi-table", 9),
-        ("新增内容", "content.add", 3, "button", "bi-plus-lg", 1),
-        ("编辑内容", "content.edit", 3, "button", "bi-pencil", 2),
-        ("删除内容", "content.delete", 3, "button", "bi-trash", 3),
-    ]
-    for name, key, pid, typ, icon, sort in perms:
-        if not db.scalar(select(AdminPermission).where(AdminPermission.key == key)):
-            db.add(AdminPermission(name=name, key=key, pid=pid, type=typ, path="", icon=icon, sort=sort, status=1))
-            result["permissions"] = result.get("permissions", 0) + 1
+    # 权限节点：按新菜单结构对齐（分组+菜单项），button 类保留并重新挂载
+    result["permissions"] = result.get("permissions", 0) + _align_permission_tree(db)
 
     db.commit()
     return result

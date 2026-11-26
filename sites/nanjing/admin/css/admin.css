@@ -4416,7 +4416,7 @@ body.theme-dark .btn-subtle.theme-secondary:hover {
 /* ---------- 插件中心 ---------- */
 .plugin-grid {
     display: grid;
-    grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns:repeat(5, minmax(0, 1fr));
     gap: 16px
 }
 
@@ -4508,7 +4508,7 @@ body.theme-dark .btn-subtle.theme-secondary:hover {
 /* ---------- 主题管理 ---------- */
 .theme-grid {
     display: grid;
-    grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns:repeat(5, minmax(0, 1fr));
     gap: 16px
 }
 
@@ -5956,7 +5956,7 @@ body.theme-dark .up-dz-icon {
 .media-view-toggle { position: absolute; right: 4px; top: 2px }
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   padding: 16px 4px 4px
 }
@@ -6215,4 +6215,12 @@ body.theme-dark{color-scheme:dark}
   .health-score{min-width:80px}
   .health-metrics>div{padding-left:10px}
   .health-time{width:100%}
+}
+
+/* 卡片列表默认一行五个，窄屏降级避免拥挤 */
+@media (max-width: 1100px){
+  .media-grid, .plugin-grid, .theme-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 768px){
+  .media-grid, .plugin-grid, .theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
