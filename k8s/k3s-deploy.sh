@@ -12,6 +12,9 @@ NS=pysite
 
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 
+# systemd-run 单元里 HOME 为空 → git 找不到 ~/.gitconfig（safe.directory/SSH 配置全失效）
+export HOME="${HOME:-/root}"
+
 # 并发锁
 exec 9>/tmp/pysite-k3s-deploy.lock
 if ! flock -n 9; then
