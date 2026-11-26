@@ -47,11 +47,10 @@ NEED_INSTALL=0
 python3 - "$SP" "$REQ" <<'PY' || NEED_INSTALL=1
 import sys, pathlib
 sp, req = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
-# 1) 顶层导入冒烟自检（注意：fastapi 0.162+ 已移除 fastapi.app 模块，勿用深层导入当检查项）
-sys.path.insert(0, str(sp))
-import fastapi, uvicorn, PIL.Image, jinja2, sqlalchemy.orm, pypinyin, pymysql, \
-       httpx, pydantic, starlette.applications, greenlet, markupsafe, anyio, h11, click, multipart
-# 2) requirements.txt 里每个固定版本都必须有对应 dist-info（reset 删包后此检查必挂）
+# 仅做 dist-info 全量核对（requirements.txt 里每个 pin 都必须有对应 dist-info）。
+# 不做任何真实 import：本检查可能运行在 webhook 接收器 Pod 的小内存 cgroup 里，
+# 导入 fastapi/PIL 等重包会被 OOM 杀掉（dist-info 校验零内存开销，且正是
+# git reset 跨删除提交后最可靠的缺失信号）。
 missing = []
 for line in req.read_text(encoding="utf-8").splitlines():
     line = line.strip()

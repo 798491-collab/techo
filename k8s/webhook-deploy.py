@@ -15,12 +15,18 @@ from pathlib import Path
 
 TOKEN = os.environ.get("WEBHOOK_TOKEN", "")
 LOG_FILE = Path("/www/wwwroot/pysite/scripts/webhook.log")
-# 在宿主机执行：把仓库脚本复制到临时文件再 bash，避免 git reset 覆盖自身
+# 在宿主机执行：把仓库脚本复制到临时文件再 bash，避免 git reset 覆盖自身。
+# 注意：nsenter 只切换命名空间，子进程仍在本 Pod 的 cgroup 里（内存限额会误伤
+# pip/自愈检查）。优先用宿主机 systemd-run 把部署进程放进宿主机自己的 cgroup；
+# systemd-run 不可用时回退为直接执行（受 Pod 内存限额约束）。
 DEPLOY_SHELL = (
     'run=$(mktemp /tmp/pysite-deploy-XXXXXX.sh) || exit 1; '
     'cp /www/wwwroot/pysite/k8s/k3s-deploy.sh "$run" || exit 1; '
     'trap \'rm -f "$run"\' EXIT; '
-    'bash "$run"'
+    'if command -v systemd-run >/dev/null 2>&1 && systemd-run --unit=pysite-deploy-$(date +%s) '
+    '--collect --quiet bash "$run" 2>/dev/null; then '
+    'echo "已通过 systemd-run 在宿主机独立 cgroup 中执行部署"; '
+    'else bash "$run"; fi'
 )
 DEPLOY_CMD = [
     "nsenter", "-t", "1", "-m", "-u", "-i", "-n", "-p", "--",

@@ -40,9 +40,9 @@ spec:
               hostPort: 8300
           resources:
             requests:
-              memory: "16Mi"
+              memory: "32Mi"
             limits:
-              memory: "64Mi"
+              memory: "256Mi"   # 部署子进程（git/kubectl/自愈检查）与本 Pod 共享 cgroup，64Mi 会被 OOM 杀死
           readinessProbe:
             httpGet:
               path: /healthz
