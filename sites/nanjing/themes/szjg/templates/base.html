@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="/theme-assets/css/style.css?v={{ static_ver }}-19">
 {% block head %}{% endblock %}
 </head>
-<body>
+<body{% if page_is_detail %} class="page-detail"{% endif %}>
 {# ===== 顶部信息条 ===== #}
 <div class="jg-topbar">
   <div class="jg-wrap jg-topbar-in">

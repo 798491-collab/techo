@@ -373,3 +373,15 @@ html,body{overflow-x:hidden;overflow-x:clip}
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
   white-space:normal;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;
 }
+
+/* ===== 2026-11-26 标题一行省略（详情/单页除外）+ 页脚链接单行省略 ===== */
+body:not(.page-detail) a[class$="-card"] > h3,
+body:not(.page-detail) a[class*="-row"] > h3,
+body:not(.page-detail) a[class*="field"] > h3,
+body:not(.page-detail) [class*="-body"] h3,
+body:not(.page-detail) [class*="-txt"] h3{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.sv-f-col a{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sv-f-col h4{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sv-f-col h4 a{display:inline-block;max-width:100%;vertical-align:bottom;}

@@ -377,3 +377,15 @@ html,body{overflow-x:hidden;overflow-x:clip}
 
 /* 导航项 wrapper（子菜单移出 <a>，修复嵌套锚点被浏览器拆散的问题） */
 .vc-nav-item{position:relative;display:flex;align-items:stretch}
+
+/* ===== 2026-11-26 标题一行省略（详情/单页除外）+ 页脚链接单行省略 ===== */
+body:not(.page-detail) a[class$="-card"] > h3,
+body:not(.page-detail) a[class*="-row"] > h3,
+body:not(.page-detail) a[class*="field"] > h3,
+body:not(.page-detail) [class*="-body"] h3,
+body:not(.page-detail) [class*="-txt"] h3{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.vc-f-col a{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vc-f-col h4{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vc-f-col h4 a{display:inline-block;max-width:100%;vertical-align:bottom;}

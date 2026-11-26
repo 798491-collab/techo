@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% set page_is_detail = true %}
 {% from "_inner.html" import page_banner, sidebar with context %}
 {% block content %}
 {{ page_banner(item.title, category.name | default('')) }}
