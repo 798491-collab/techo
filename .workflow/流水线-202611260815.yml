@@ -14,10 +14,14 @@ stages:
     strategy: naturally
     trigger: auto
     steps:
-      - step: shell@host            # ← 关键：主机执行类型，不要写 shell@agent
+      - step: deploy@agent
         name: deploy
         displayName: 执行 k3s 部署脚本
         hostGroupID: pysite-server
+        deployArtifact:
+          - source: artifact
+            name: output
+            target: /tmp
         script: |
           set -e
           LOCK=/tmp/pysite-deploy.lock
