@@ -22,11 +22,13 @@ LOG_FILE = Path("/www/wwwroot/pysite/scripts/webhook.log")
 DEPLOY_SHELL = (
     'run=$(mktemp /tmp/pysite-deploy-XXXXXX.sh) || exit 1; '
     'cp /www/wwwroot/pysite/k8s/k3s-deploy.sh "$run" || exit 1; '
-    'trap \'rm -f "$run"\' EXIT; '
-    'if command -v systemd-run >/dev/null 2>&1 && systemd-run --unit=pysite-deploy-$(date +%s) '
-    '--collect --quiet bash "$run" 2>/dev/null; then '
+    'if command -v systemd-run >/dev/null 2>&1 && systemd-run '
+    '--unit=pysite-deploy-$(date +%s) --collect --quiet '
+    '-p StandardOutput=file:/www/wwwroot/pysite/scripts/k3s-deploy.log '
+    '-p StandardError=file:/www/wwwroot/pysite/scripts/k3s-deploy.log '
+    'bash "$run" 2>/dev/null; then '
     'echo "已通过 systemd-run 在宿主机独立 cgroup 中执行部署"; '
-    'else bash "$run"; fi'
+    'else bash "$run"; rm -f "$run"; fi'
 )
 DEPLOY_CMD = [
     "nsenter", "-t", "1", "-m", "-u", "-i", "-n", "-p", "--",
