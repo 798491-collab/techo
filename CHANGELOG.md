@@ -8,7 +8,38 @@
 
 ---
 
-## v2.3.3 — 2026-11-26（当前）
+## v2.4.0 — 2026-11-26（当前）
+
+### 安全 / 权限（RBAC）
+- **系统菜单按角色 rules 过滤**：`/api/admin/menu` 按「角色 rules → 菜单开关 → 内容模型」三层过滤，空分组不下发；前端 `enterApp` 越权 hash 一律回落到有权限的页面，无权限时显示「暂无可访问菜单」。`bc89227`
+- **接口级 RBAC 守卫**：新增全局 `admin_rbac_guard`（`accounts/router.py`），支持 `*`/精确 key/`group:分组名`/`content:*` 通配匹配；内容类接口（列表/详情/保存/删除/回收站恢复）按资源与 model 细化鉴权，未授权统一 403。依赖改用 `raise HTTPException` 短路（JSONResponse 返回不短路），factory 注册全局异常 handler 返回 `{code,msg}`。`bc89227`
+- **权限树与菜单结构对齐**：后台分页固定 10 条、卡片列表一行 5 个、菜单按新 JSON 结构重排；对齐权限树时清理废弃旧分组节点，彻底消除 `station/content` 等残留。`5f74ba4`, `bfcc5cf`
+
+### 审计日志
+- **操作日志增强**：IP 缺失修复——统一 `client_ip(request)` 解析反代头（`X-Forwarded-For`/`X-Real-IP` 优先），登录、表单提交等全部入口替换；中间件回填「请求/响应[状态码]」摘要与真实 IP。`c7ada0a`
+- **流式与大数据保护**：`StreamingResponse`/SSE/事件流响应不读完整响应体；请求/响应 body 仅在 ≤64KB 且非 multipart 时缓存记录，高并发大请求不增加内存开销；登录请求不记录、password 字段打码。`c7ada0a`
+- 所有展示「关联内容模型」的地方改用模型名称（中文），不再显示模型标识。`c7ada0a`
+
+### 前台 / 主题
+- **全主题标题一行超出省略**：五主题页脚热点/产品/新闻等标题统一 `text-overflow: ellipsis` 一行省略，详情页（`body.page-detail`）除外；蜂巢深蓝主题追加防溢出规则（min-width:0、多行 clamp、`overflow-wrap:anywhere`）。`ccf7f91`
+- **页脚新闻/产品兜底**：所有主题页脚「热点」不足 4 条时按 article 模型取最新内容自动补齐；栏目/页脚列表按内容模型过滤查询（`cat.model` 对应上），修复智造橙主题页脚新闻空白、产品/新闻按分类查不到的问题。`ccf7f91`, `bc89227`
+- **首页内联脚本抽离**：三主题首页轮播/页签 JS 抽离为 `themes/<t>/static/js/home.js` 独立文件，带 `?v={{ static_ver }}` 缓存版本号。`fc781d7`
+
+### 后台体验
+- **页面切换滚动重置**：管理后台内容高度是动态的，从内容多的页面滚到底后切到内容少的页面时窗口滚动残留导致视图错位；切换页面一律回到顶部并 `history.scrollRestoration='manual'`（五站同步）。
+
+### 性能 / 稳定性
+- **应用启动自动清理整页缓存**：磁盘整页缓存 + 内存 LRU 启动即清，避免发版后命中旧页面。`4f3956d`
+- **缩略图 OOM 修复**：限制缩略图并发、JPEG 解码降采样，修复杭州站 OOM 导致的 502；进一步改为单 worker 队列串行生成，五站内存配置统一。`302c23d`, `5e198cf`
+- **五站代码提速与后台体验优化**：后台各页面展示本次请求响应耗时（非滑动窗口均值）、健康检查、移动端样式适配等。`e81fc68`
+
+### 部署 / K8s
+- **零停机发版改造**：去掉 hostPort 改 Service ClusterIP，YAML 成为唯一真相源，`RollingUpdate(maxUnavailable:0, maxSurge:1)`，就绪/存活探针 8s→18s，依赖链路同步调整。`e32a9e6`
+- **502 排查与运维命令写入 README**（队列方案，不增加内存）。`5e198cf`
+- **文档同步**：删除从未读取的 `sites/*/site.json`（全存数据库）；根 README 与五站 README 融合重写，补充 Drone 30080 界面地址与自动部署链路介绍。`fc781d7`
+- 清理误提交的临时诊断脚本。`07467a4`
+
+## v2.3.3 — 2026-11-26
 
 ### 修复
 - **Drone push 自动触发失效（`Cannot find repository`）**：Gitee 仓库显示名为中文 `Techo一杯茶轻量自托管站群CMS`，而 Drone 库 `repos.repo_name` 存的是路径 `techo`。Gitee webhook payload 的 `repository.name` 用显示名、Drone 的 Gitee 驱动据此查库（`convertHookRepository` 里 `Name: from.Name`），两者不匹配导致 push 返回 `Cannot find repository` 且不产生 build。抓包对比 payload 确认后，通过 Gitee API `PATCH /repos/donghaichen/techo {"name":"techo"}` 把**显示名改为 `techo`**（路径与 clone 地址不变）。验证：push 后 Drone 产生 `build_id=1`（event=push，46 秒 success），部署日志显示五站滚动更新 + 健康校验全 200。

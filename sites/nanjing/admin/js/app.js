@@ -100,9 +100,19 @@
     open(first);
   }
 
+  /* 需求（2026-11-26）：页面切换滚动重置——内容高度是动态的，上个页面滚到底后
+     切到内容少的页面时窗口滚动残留会导致视图错位，切换一律回到顶部 */
+  function resetScroll(){
+    try{ history.scrollRestoration='manual'; }catch(e){}
+    window.scrollTo(0,0);
+    document.documentElement.scrollTop=0;
+    document.body.scrollTop=0;
+  }
+
   async function open(key){
     if(key==='profile') return openProfile();
     const item=MENU_MAP[key]; if(!item)return;
+    resetScroll();
     setTitle(item.name);
     location.hash=key; addTab(key,item.name);
     disposeCharts();
@@ -788,6 +798,7 @@
 
   /* ============ 个人中心 ============ */
   async function openProfile(){
+    resetScroll();
     setTitle('个人中心');
     location.hash='profile'; addTab('profile','个人中心');
     highlight('profile');
