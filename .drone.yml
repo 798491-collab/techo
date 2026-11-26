@@ -1,46 +1,74 @@
 # ============================================================
-# Drone CI 流水线（唯一部署入口）
-# 触发：
-#   1) git push → Gitee WebHook → Drone :30080/hook → 自动 build
-#   2) Drone Web 界面点 "Run pipeline" —— 等价于 Jenkins 的 Build Now
-# 动作：调用宿主机 webhook-receiver(8300)，复用已验证的部署链路：
-#       webhook → nsenter → 复制脚本到 /tmp → k8s-deploy.sh（含健康检查/回滚）
+# Drone CI 流水线（唯一部署入口）—— push 自动 + promote/rollback 生产部署
+# 链路：git push → Gitee WebHook → Drone push 构建（CI 校验）→ 自动 promote
+#       → 生产构建（event=promote）→ 8300 接收器 → k3s-deploy.sh
+# Deployments 页：promote / rollback 会写入部署记录（target=production），
+#                 支持一键回滚（rollback 事件走同一条部署步骤）。
 # 运行器：exec runner（直接在宿主机执行，无需 Docker、无需 privileged）
-# 安全：入站 Gitee 推送由本仓库 repo.Signer 验签（激活仓库时 Drone 自动生成，
-#       并已写入 Gitee webhook 密码），无需 DRONE_WEBHOOK_SECRET（那是出站系统 webhook 用的）
-# 注意：8300 接收器必须保留 —— 它就是本流水线调用的下游部署执行器，删了 Drone 也部署不了
+# 安全：入站推送由仓库 repo.Signer 验签；Drone API token 在服务器
+#       k8s/secrets/drone-token.txt（gitignore，不入库）
 # ============================================================
 kind: pipeline
 type: exec
 name: deploy-pysite
 
-# 只对 push 触发（Drone 手动点 Run pipeline 也产生 push 事件），避免 PR 触发生产部署
 trigger:
   event:
     - push
+    - promote
+    - rollback
 
-# 代码已在宿主机 /www/wwwroot/pysite，无需 clone；
-# 同时规避 exec runner 无法向私有仓库注入 git credential 的已知限制
+# 代码已在宿主机 /www/wwwroot/pysite，禁用默认 clone（此前 clone: skip 是
+# Drone 0.8 老语法不生效，曾因 Gitee 网络 TLS 中断导致构建失败）
 clone:
-  skip: true
+  disable: true
 
 steps:
+  # ---------- push 构建：CI 校验 + 自动晋升生产 ----------
+  - name: 校验并晋升生产
+    when:
+      event:
+        - push
+    commands:
+      - |
+        set -e
+        echo "===== CI 校验 $(date '+%F %T') commit ${DRONE_COMMIT_SHA:0:8} ====="
+        rm -rf /tmp/ci-check && mkdir -p /tmp/ci-check
+        git -C /www/wwwroot/pysite archive "$DRONE_COMMIT_SHA" | tar -x -C /tmp/ci-check
+        find /tmp/ci-check/sites -name '*.py' -print0 | xargs -0 -n1 python3 -m py_compile \
+          && echo "五站源码编译校验通过"
+        rm -rf /tmp/ci-check
+        # 校验通过 → 自动 promote 到 production（写入 Deployments 记录并触发生产构建）
+        TOKEN=$(tr -d '\r\n' < /www/wwwroot/pysite/k8s/secrets/drone-token.txt)
+        echo "晋升生产环境..."
+        curl -fsS -X POST -H "Authorization: Bearer $TOKEN" \
+          "$DRONE_SERVER/api/repos/$DRONE_REPO_NAMESPACE/$DRONE_REPO_NAME/builds/$DRONE_BUILD_NUMBER/promote?target=production" \
+          | head -c 200
+        echo
+
+  # ---------- promote / rollback 构建：真正的部署 ----------
   - name: 触发五站部署
+    when:
+      event:
+        - promote
+        - rollback
     commands:
       - |
         set -e
         LOG=/www/wwwroot/pysite/scripts/k3s-deploy.log
-        # exec runner 跑在宿主机，直接读已 gitignore 的 token 文件，无需 Drone secret
         TOKEN=$(tr -d '\r\n' < /www/wwwroot/pysite/k8s/secrets/webhook-token.txt)
-        echo "===== 部署 $(date '+%F %T') [触发: $DRONE_BUILD_EVENT] ====="
-        echo "分支 $DRONE_BRANCH / 提交 ${DRONE_COMMIT_SHA:0:8} / 触发方式 $DRONE_BUILD_EVENT"
+        echo "===== 部署 $(date '+%F %T') [触发: $DRONE_BUILD_EVENT / target: $DRONE_DEPLOY_TO] ====="
+        echo "分支 $DRONE_BRANCH / 提交 ${DRONE_COMMIT_SHA:0:8}"
         BEFORE=$(wc -l < "$LOG" 2>/dev/null || echo 0)
         curl -fsS "http://127.0.0.1:8300/hook?token=$TOKEN"
-        echo "已提交到部署队列，等待结果（最长 180s）..."
-        for i in $(seq 1 180); do
-          if tail -n +$((BEFORE+1)) "$LOG" 2>/dev/null | grep -qE '部署完成|回滚完成|另一个部署正在进行'; then
-            tail -n +$((BEFORE+1)) "$LOG"
-            exit 0
+        echo "已提交到部署队列，等待结果（最长 900s）..."
+        for i in $(seq 1 900); do
+          NEW=$(tail -n +$((BEFORE+1)) "$LOG" 2>/dev/null || true)
+          if echo "$NEW" | grep -q '部署完成'; then
+            echo "$NEW"; echo "部署成功"; exit 0
+          fi
+          if echo "$NEW" | grep -qE '回滚完成|部署失败'; then
+            echo "$NEW"; echo "部署失败已自动回滚"; exit 1
           fi
           sleep 1
         done

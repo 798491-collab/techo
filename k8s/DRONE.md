@@ -5,16 +5,27 @@
 ## 它是什么
 
 ```
-入口 A：你在 Drone 网页点 "Run pipeline"       入口 B：git push
+入口 A：Drone 网页 Run pipeline              入口 B：git push
             ↓                                        ↓
             └──────────→ Drone :30080/hook ←──────────┘
                               ↓
-                    exec runner（宿主机二进制）执行 .drone.yml
+              push 构建：CI 校验（五站源码 py_compile）
                               ↓
-                    curl http://127.0.0.1:8300/hook?token=...   ← 8300 接收器（部署执行器，必须保留）
+        自动 promote target=production（写入 Deployments 记录）
                               ↓
-                    nsenter → k8s/k3s-deploy.sh（拉代码/滚动更新/健康检查/失败回滚）
+              生产构建（event=promote / rollback）
+                              ↓
+              curl http://127.0.0.1:8300/hook?token=...  ← 8300 接收器（部署执行器，必须保留）
+                              ↓
+              nsenter → k8s/k3s-deploy.sh（拉代码/滚动更新/健康检查/失败回滚）
 ```
+
+- **Deployments 页有数据了**：部署统一走 promote（target=production）/ rollback 事件，Drone 会把每次
+  生产部署与回滚记录到仓库的 Deployments 页，支持一键回滚（触发 rollback 事件走同一条部署步骤）。
+- **push 构建只做 CI 校验**：五站全部 `.py` 源码 `py_compile` 通过才 promote，不合格不会进生产。
+- **clone 已禁用**：代码本来就在宿主机，禁止默认 clone。此前 `clone: skip: true` 是 Drone 0.8 老语法
+  （Drone 2.x 只认 `clone: disable: true`），导致每次构建都从 Gitee 重新拉代码，2026-11-26 曾因
+  Gitee 网络 TLS 中断直接构建失败（build #17）。
 
 - **Server**：`drone/drone:2` 跑在现有 K3s，内置 SQLite（hostPath `k8s/drone-data/`），limits 128Mi。
 - **Runner**：官方 `drone-runner-exec` 二进制，systemd 托管，直接在宿主机执行命令——无需 Docker（你只有 containerd），常驻内存可忽略。
@@ -58,6 +69,10 @@ sudo bash k8s/install-drone.sh
 
 脚本会依次问你：CI 对外地址（如 `ci.example.com`）、Client ID、Client Secret、Gitee 用户名。
 然后自动完成：创建 Secret → 部署 server → 下载安装 runner → 启动 → 等待就绪。
+
+> 流水线需要 Drone API token 才能自动 promote：存放在服务器
+> `k8s/secrets/drone-token.txt`（gitignore，权限 600；来源：Drone 网页右上角头像 →
+> User Settings → Personal Token，或 drone 库 users 表 `user_hash` 字段）。
 
 ### 3. 首次使用
 

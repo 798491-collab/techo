@@ -33,9 +33,10 @@
 
 - 独立 Deployment `pysite/wuxi`（namespace `pysite`）+ 固定 ClusterIP Service（无 hostNetwork/hostPort）；
   更新策略 RollingUpdate（`maxUnavailable: 0`），发版全程无 502。
-- **git push 即自动部署**：Gitee WebHook → Drone CI（`http://45.91.139.246:30080`，Builds 可追溯、可手动触发）
-  → 服务器 webhook 接收器（8300）→ `k8s/k3s-deploy.sh`
+- **git push 即自动部署**：Gitee WebHook → Drone CI 校验（`http://45.91.139.246:30080`）→ 自动 promote
+  production → 生产构建部署：服务器 webhook 接收器（8300）→ `k8s/k3s-deploy.sh`
   （apply YAML 真相源 → 注入 commit 注记 → 同步 nginx 反代并 reload → ClusterIP 健康检查 → 失败自动回滚）。
+  生产部署/回滚记录见 Drone 仓库 **Deployments** 页。
 - 常用运维（SSH 到服务器）：
 
   ```bash

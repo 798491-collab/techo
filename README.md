@@ -79,7 +79,7 @@ python start.py stop     # 停止
 ### 自动部署（Drone CI + Webhook，已上线）
 
 - **Drone CI 界面（30080）**：`http://45.91.139.246:30080` —— 用 Gitee 账号登录，可查看每次 push 的构建记录与日志、手动触发重新构建；健康检查 `http://127.0.0.1:30080/healthz`（服务器本机）
-- **完整链路**：仓库 push → Gitee WebHook（唯一一条，指向 `http://45.91.139.246:30080/hook`）→ Drone 构建（Builds 留痕可追溯）→ `curl 127.0.0.1:8300/hook` → 服务器 webhook 接收器（nsenter 进入宿主机执行）→ `k8s/k3s-deploy.sh`
+- **完整链路**：仓库 push → Gitee WebHook（唯一一条，指向 `http://45.91.139.246:30080/hook`）→ Drone push 构建（五站源码编译校验）→ 自动 promote 到 production → 生产构建 → `curl 127.0.0.1:8300/hook` → 服务器 webhook 接收器（nsenter 进入宿主机执行）→ `k8s/k3s-deploy.sh`；Drone Deployments 页有完整生产部署/回滚记录
 - **部署脚本**：`apply` Service → `apply` Deployment（注入 commit 注记）→ 同步 nginx 反代并 reload → 等待就绪 → 经 ClusterIP 健康检查 → 失败自动 `rollout undo` 回滚
 - 部署日志：`scripts/k3s-deploy.log`（宿主机）+ `scripts/webhook.log`（接收器）；Drone 配置详见 `k8s/DRONE.md`
 

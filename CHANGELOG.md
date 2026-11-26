@@ -8,11 +8,34 @@
 
 ---
 
-## v2.4.1 — 2026-11-26（当前）
+## v2.4.2 — 2026-11-26（当前）
+
+### 修复（Drone 部署链路故障）
+- **venv 误删导致滚动更新失败（重要教训）**：v2.4.1 把 `venv/` 当「无任何使用」删除是**误判**——
+  `deploy-*.yaml` 用 hostPath 把 `venv/lib/python3.10/site-packages` 挂进五站 Pod 作为依赖目录。
+  服务器 `git reset --hard` 删掉该目录后，新 Pod 全部 CrashLoopBackOff（`ImportError: cannot import
+  name 'FastAPI'`），滚动更新逐站失败、自动回滚到旧版。已在服务器用主机 pip（Python 3.10.12，与
+  容器 python:3.10-slim ABI 匹配）按固定版本重建 site-packages；仓库新增 **`requirements.txt`**
+  （全部固定版本含传递依赖 + 重建方法注释），`.gitignore` 保持忽略 `venv/`（目录只应存在于服务器）。
+- **clone 步骤从未被跳过**：`.drone.yml` 的 `clone: skip: true` 是 Drone 0.8 老语法，Drone 2.x 只认
+  `clone: disable: true`。此前每次构建都从 Gitee 重新拉代码，build #17 因 Gitee 网络 TLS 中断
+  （`GnuTLS recv error` / `early EOF`）直接失败。已改为 `disable: true`。
+- **Drone 等待部署超时**：部署最长耗时曾超 180s（逐站 120s 启动等待），构建 #18 在部署仍在进行时
+  超时报 Failure。等待上限提高到 900s，并区分结果：`部署完成` → 成功；`部署失败/回滚完成` → 构建失败。
+
+### 变更（Deployments 页有数据）
+- **部署流程改为 promote 模式**：push 构建 = CI 校验（五站源码 `py_compile`）→ 校验通过自动
+  `promote target=production` → 生产构建（event=promote）执行 8300 部署。Drone 的 Deployments 页
+  从此记录每次生产部署与回滚（此前该页只在 promote/rollback 时填充，push 直部署永远为空），并支持
+  页面一键回滚（rollback 事件走同一条部署步骤）。
+- Drone API token 存服务器 `k8s/secrets/drone-token.txt`（gitignore，600），来源 users 表 `user_hash`。
+
+## v2.4.1 — 2026-11-26
 
 ### 清理
 - **遗留物全量清除**：删除仓库中不再使用的文件与目录（含从版本库移除历史误提交内容）：
-  - `venv/`（40MB 误提交的 Linux 虚拟环境，1728 个文件，加入 .gitignore）
+  - `venv/`（40MB 误提交的 Linux 虚拟环境，1728 个文件，加入 .gitignore。**注：当时误判为无用，
+    实际是五站 Pod hostPath 挂载的依赖目录，已在 v2.4.2 修复并补 requirements.txt**）
   - `k8s/kubepi.yaml`（KubePi 面板整体下线：同步删除 `provision-secrets.sh` 的 KubePi 改密段、
     `.gitignore` 的 kubepi-data 条目、README/k8s 文档中全部 KubePi 引用）
   - `scripts/deploy.sh`、`scripts/pysite`、`scripts/systemd/pysite@.service`（systemd 时代旧部署链，已被 `k8s/k3s-deploy.sh` 取代）
