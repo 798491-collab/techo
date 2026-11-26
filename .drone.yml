@@ -83,7 +83,7 @@ steps:
           if echo "$NEW" | grep -q '部署完成'; then
             echo "$NEW"; echo "部署成功"; exit 0
           fi
-          if echo "$NEW" | grep -qE '回滚完成|部署失败'; then
+          if echo "$NEW" | grep -qE '回滚完成|部署失败|中止部署|异常退出|三次均失败'; then
             echo "$NEW"; echo "部署失败已自动回滚"; exit 1
           fi
           sleep 1
