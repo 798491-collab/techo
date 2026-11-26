@@ -261,6 +261,8 @@ h1,h2,h3,h4{font-weight:600}
 .sg-f-col p i{color:var(--sg-main)}
 .sg-f-col .sg-btn{margin-top:12px}
 .sg-f-bottom{border-top:1px solid #3d3d3d;padding:18px 0;text-align:center;font-size:13px;color:#777}
+.sg-resp-time{white-space:nowrap}
+.sg-resp-time b{font-weight:600;color:#aaa;font-variant-numeric:tabular-nums}
 .sg-backtop{width:52px;height:52px;border:none;border-radius:8px;background:var(--sg-main);color:#fff;font-size:22px;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.15)}
 .sg-backtop.show{display:flex}
 .sg-backtop:hover{background:var(--sg-main-dark)}

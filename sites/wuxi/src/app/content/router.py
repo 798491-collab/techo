@@ -255,6 +255,7 @@ MENU = [
     {"key": "dev-theme", "name": "主题管理", "icon": "bi-palette", "group": "开发管理"},
     {"key": "dev-plugin", "name": "插件管理", "icon": "bi-puzzle", "group": "开发管理"},
     {"key": "dev-openapi", "name": "开放API", "icon": "bi-braces", "group": "开发管理"},
+    {"key": "dev-health", "name": "健康检查", "icon": "bi-heart-pulse", "group": "开发管理"},
 ]
 
 
@@ -386,6 +387,78 @@ async def dashboard(request: Request, db: Session = Depends(get_db), username: s
         "model_stats": model_stats,
         "recent": [{"id": c.id, "title": c.title, "model": c.model,
                     "created_at": c.created_at.strftime("%Y-%m-%d %H:%M")} for c in recent],
+    })
+
+
+# ---------------- 健康检查（开发管理） ----------------
+@router.get("/health")
+async def admin_health(request: Request, db: Session = Depends(get_db), username: str = Depends(current_admin)):
+    """站点自检：逐项探测 Web / 数据库 / 缓存 / 磁盘 / 主题，任一异常不影响其他项返回。"""
+    t0 = time.perf_counter()
+    cfg, _, cache = ctx(request)
+    checks = []
+
+    def add(name, status, detail, cost=0.0):
+        checks.append({"name": name, "status": status, "detail": detail,
+                       "cost_ms": round(cost, 2)})
+
+    # 1) Web 服务：能进入本接口即正常，取当前响应耗时
+    add("Web 服务", "ok", "ASGI 服务响应正常", (time.perf_counter() - t0) * 1000)
+
+    # 2) 数据库：真实执行一次查询 + 读取库文件大小
+    t = time.perf_counter()
+    try:
+        n_setting = db.scalar(select(func.count()).select_from(Setting)) or 0
+        db_file = cfg.db_file
+        size_mb = round(db_file.stat().st_size / 1024 / 1024, 2) if db_file.exists() else 0
+        add("数据库", "ok", f"SQLite 可读写 · 配置 {n_setting} 项 · 库文件 {size_mb} MB · WAL 模式",
+            (time.perf_counter() - t) * 1000)
+    except Exception as e:
+        add("数据库", "error", f"查询失败：{type(e).__name__}: {e}", (time.perf_counter() - t) * 1000)
+
+    # 3) 缓存：文件数 + 整页内存缓存条数
+    t = time.perf_counter()
+    try:
+        files = sum(1 for _ in cache.cache_dir.glob("*.json"))
+        pages = sum(1 for _ in cache.page_dir.glob("*.html"))
+        mem = len(getattr(cache, "_page_mem", {}) or {})
+        add("文件缓存", "ok", f"数据缓存 {files} 个 · 整页缓存 {pages} 个 · 内存热点 {mem} 条",
+            (time.perf_counter() - t) * 1000)
+    except Exception as e:
+        add("文件缓存", "error", f"缓存目录异常：{type(e).__name__}: {e}", (time.perf_counter() - t) * 1000)
+
+    # 4) 磁盘：剩余不足 1GB 标警告
+    t = time.perf_counter()
+    try:
+        usage = shutil.disk_usage(cfg.root)
+        free_gb = round(usage.free / 1024 ** 3, 2)
+        total_gb = round(usage.total / 1024 ** 3, 2)
+        status = "warn" if free_gb < 1 else "ok"
+        add("磁盘空间", status, f"剩余 {free_gb} GB / 共 {total_gb} GB", (time.perf_counter() - t) * 1000)
+    except Exception as e:
+        add("磁盘空间", "error", f"读取失败：{type(e).__name__}: {e}", (time.perf_counter() - t) * 1000)
+
+    # 5) 主题与静态资源
+    t = time.perf_counter()
+    theme = str(getattr(request.app.state, "theme_name", None) or cfg.theme or "default")
+    try:
+        tpl = cfg.theme_root / theme / "templates" / "base.html"
+        static = cfg.theme_root / theme / "static"
+        status = "ok" if tpl.is_file() and static.is_dir() else "error"
+        add("主题资源", status, f"当前主题 {theme} · 模板{'存在' if tpl.is_file() else '缺失'} · 静态目录{'存在' if static.is_dir() else '缺失'}",
+            (time.perf_counter() - t) * 1000)
+    except Exception as e:
+        add("主题资源", "error", f"检查失败：{type(e).__name__}: {e}", (time.perf_counter() - t) * 1000)
+
+    overall = "error" if any(c["status"] == "error" for c in checks) else (
+        "warn" if any(c["status"] == "warn" for c in checks) else "ok")
+    return ok({
+        "status": overall,
+        "site": {"name": cfg.name, "key": cfg.key, "theme": theme, "port": cfg.port},
+        "checks": checks,
+        "perf": request.app.state.perf.snapshot(),
+        "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "response_time_ms": round((time.perf_counter() - t0) * 1000, 2),
     })
 
 

@@ -85,7 +85,7 @@
     </div>
   </div>
   <div class="zt-f-bottom">
-    <div class="zt-wrap">{{ site.copyright or ('© 2026 ' ~ site.name) }} · <a href="https://beian.miit.gov.cn" rel="nofollow noreferrer" target="_blank">{{ site.icp }}</a>{% if site.gongan_icp %} &nbsp;·&nbsp; <a href="https://beian.mps.gov.cn/" rel="nofollow noreferrer" target="_blank">{{ site.gongan_icp }}</a>{% endif %} &nbsp;·&nbsp; <a href="/sitemap.xml" target="_blank">网站地图</a></div>
+    <div class="zt-wrap">{{ site.copyright or ('© 2026 ' ~ site.name) }} · <a href="https://beian.miit.gov.cn" rel="nofollow noreferrer" target="_blank">{{ site.icp }}</a>{% if site.gongan_icp %} &nbsp;·&nbsp; <a href="https://beian.mps.gov.cn/" rel="nofollow noreferrer" target="_blank">{{ site.gongan_icp }}</a>{% endif %} &nbsp;·&nbsp; <a href="/sitemap.xml" target="_blank">网站地图</a> &nbsp;·&nbsp; <span class="sg-resp-time" title="本次页面请求的服务端响应耗时" style="white-space:nowrap">响应耗时 <b id="sgRespTime" style="font-weight:600;color:#aaa;font-variant-numeric:tabular-nums">—</b></span></div>
   </div>
 </footer>
 {# ===== 右侧浮动导航 ===== #}
@@ -107,5 +107,17 @@
 <script src="/theme-libs/gsap/ScrollTrigger.min.js?v={{ static_ver }}"></script>
 <script src="/theme-assets/js/main.js?v={{ static_ver }}-10"></script>
 {% block scripts %}{% endblock %}
+
+<script>
+/* 显示本次页面请求自己的响应耗时（服务端中间件下发的一次性 cookie），
+   不是 PerfStats 滑动窗口平均值 —— 两者口径不同 */
+(function(){
+  var e=document.getElementById('sgRespTime'); if(!e) return;
+  var m=document.cookie.match(/(?:^|;\s*)rt_page_ms=([0-9.]+)/);
+  var v=m?parseFloat(m[1]):NaN;
+  e.textContent=isFinite(v)?((v>=100?v.toFixed(0):v.toFixed(1))+' ms'):'—';
+  e.parentNode.title='本次页面请求的服务端响应耗时（不含网络传输）';
+})();
+</script>
 </body>
 </html>

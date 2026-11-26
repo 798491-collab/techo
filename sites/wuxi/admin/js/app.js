@@ -24,7 +24,7 @@
   const SPECIAL = new Set([
     'dashboard','station-generate','station-setting','order-pay-setting',
     'setting-basic','setting-upload','setting-sms','setting-email','tool-seo',
-    'setting-security','setting-switch','dev-theme','dev-plugin','dev-content-model','content-recycle'
+    'setting-security','setting-switch','dev-theme','dev-plugin','dev-content-model','dev-health','content-recycle'
   ]);
 
   function buildMenu(data){
@@ -198,6 +198,50 @@
     }catch(e){ console.warn('图表渲染失败',e); }
   }
 
+  /* ============ 健康检查（开发管理） ============ */
+  async function renderHealth(el){
+    const t0=performance.now();
+    const r=await api('/api/admin/health');
+    if(r.code!==0){ el.innerHTML=`<div class="card-box fg-danger">健康检查失败：${esc(r.msg||'未知错误')}</div>`; return; }
+    const d=r.data||{};
+    const clientMs=Math.round((performance.now()-t0)*10)/10;
+    const label={ok:'运行正常',warn:'需要关注',error:'存在异常'}[d.status]||'未知';
+    const p=d.perf||{};
+    const checks=d.checks||[];
+    const icon={ok:'bi-check-circle-fill',warn:'bi-exclamation-triangle-fill',error:'bi-x-circle-fill'};
+    el.innerHTML=`
+      <div class="page-head"><div><h4>健康检查</h4><div class="sub">实时检测 Web 服务、数据库、缓存、磁盘与主题资源状态</div></div>
+        <button class="btn btn-solid theme-primary btn-loading" id="health-refresh"><i class="bi bi-arrow-clockwise"></i> 重新检查</button></div>
+      <div class="health-summary status-${esc(d.status||'ok')}">
+        <div class="health-score"><i class="bi bi-heart-pulse"></i><b>${esc(label)}</b><small>站点综合状态</small></div>
+        <div class="health-metrics">
+          <div><span>服务端耗时</span><b>${d.response_time_ms ?? '-'}<small> ms</small></b></div>
+          <div><span>端到端耗时</span><b>${clientMs}<small> ms</small></b></div>
+          <div><span>检查项</span><b>${checks.length}<small> 项</small></b></div>
+          <div><span>采样窗口</span><b>${p.count||0}<small> 次</small></b></div>
+        </div>
+        <div class="health-time">检查时间 ${esc(d.checked_at||'')}</div>
+      </div>
+      <div class="card-box"><h5><i class="bi bi-clipboard-check"></i> 检查项明细</h5>
+        <div class="health-list">${checks.map(c=>`
+          <div class="health-item s-${esc(c.status)}">
+            <i class="bi ${icon[c.status]||'bi-question-circle-fill'}"></i>
+            <div class="hc-body"><b>${esc(c.name)}</b><small>${esc(c.detail)}</small></div>
+            <span class="hc-cost">${c.cost_ms ?? '-'} ms</span>
+          </div>`).join('')||'<div class="list-empty">暂无检查项</div>'}</div>
+      </div>
+      <div class="card-box"><h5><i class="bi bi-speedometer2"></i> 响应耗时分布</h5>
+        <div class="sub fg-secondary">最近 ${p.count||0} 次请求（滑动窗口），服务端从接收请求到发出响应头的时间</div>
+        ${perfStrip(p)}
+      </div>
+      ${(p.slow||[]).length?`<div class="card-box"><h5><i class="bi bi-exclamation-circle"></i> 慢请求记录</h5>
+        <div class="health-list">${p.slow.map(s=>`<div class="health-item s-warn"><i class="bi bi-clock-history"></i>
+          <div class="hc-body"><b>${esc(s.path||'-')}</b><small>超过 200ms 阈值</small></div>
+          <span class="hc-cost">${s.ms} ms</span></div>`).join('')}</div></div>`:''}`;
+    const btn=document.getElementById('health-refresh');
+    if(btn) btn.onclick=()=>{btnLoading(btn,true);renderHealth(el).finally(()=>btnLoading(btn,false));};
+  }
+
   /* ============ 特殊功能页 ============ */
   async function renderSpecial(key,el,title){
     switch(key){
@@ -224,6 +268,7 @@
       case 'dev-theme': return renderThemes(el);
       case 'dev-plugin': return renderPlugins(el);
       case 'dev-content-model': return renderContentModels(el);
+      case 'dev-health': return renderHealth(el);
       default: el.innerHTML=`<div class="card-box"><div class="list-empty"><i class="bi bi-cone-striped"></i>功能建设中</div></div>`;
     }
   }
@@ -1351,8 +1396,24 @@
     open(MENU_MAP[hash]?hash:(hash==='profile'?'profile':'dashboard'));
   }
 
+  /* 侧栏底部：仅探测在线状态。
+     耗时文本由 core.js 的 api() 根据每次请求响应头 X-Response-Time 更新，
+     显示的是本次请求自己的耗时，不是 PerfStats 滑动窗口平均值。 */
+  async function refreshNavPerf(){
+    try{
+      const res=await fetch('/api/health?t='+Date.now(),{cache:'no-store',headers:{'Accept':'application/json'}});
+      const dot=document.querySelector('#nav-foot .dot-online');
+      if(dot) dot.style.background=res.ok?'':'var(--color-danger)';
+    }catch(e){
+      const dot=document.querySelector('#nav-foot .dot-online');
+      if(dot) dot.style.background='var(--color-danger)';
+    }
+  }
+
   async function initApp(){
     applyTheme();
+    refreshNavPerf();
+    setInterval(refreshNavPerf, 10000);
     C.hideLoading(true);  // 需求：全局 loading——资源就绪后收起遮罩（页面初始即显示）
     document.getElementById('theme-toggle').onclick=doThemeToggle;
     const ttm=document.getElementById('toggle-theme-menu');if(ttm)ttm.onclick=(e)=>{e.preventDefault();doThemeToggle();};

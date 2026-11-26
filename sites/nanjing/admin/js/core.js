@@ -47,6 +47,19 @@ window.CMS = (function(){
       barEnd(false);
       return {code:50001, msg:'网络连接失败'};
     }
+    /* 侧栏「响应耗时」显示本次请求自己的耗时（X-Response-Time 响应头），
+       不是 PerfStats 滑动窗口平均值 —— 两个口径不同，不可混用 */
+    try {
+      const rt = res.headers.get('X-Response-Time');
+      const ms = parseFloat(rt);
+      if (isFinite(ms)) {
+        const el = document.getElementById('nav-resp-time');
+        if (el) {
+          el.textContent = (ms >= 100 ? ms.toFixed(0) : ms.toFixed(1)) + ' ms';
+          el.title = '本次请求的服务端响应耗时（不含网络传输）';
+        }
+      }
+    } catch (e) {}
     let data;
     const raw = await res.text().catch(()=>'');
     try { data = JSON.parse(raw); }
@@ -251,7 +264,23 @@ window.CMS = (function(){
   };
 
   /* ---------- G2 图表封装 ---------- */
+  /* 记录容器引用：窗口缩放时按容器实际宽度重设画布，避免旧 canvas 宽度撑开页面 */
   const charts = [];
+  let _chartResizeTimer = null;
+  function resizeCharts(){
+    charts.forEach(entry=>{
+      const chart = entry.chart || entry;
+      const el = entry.el;
+      if(!chart || !el || typeof chart.changeSize!=='function') return;
+      const w = Math.floor(el.clientWidth || el.getBoundingClientRect().width || 0);
+      if(w <= 0) return;                       // 隐藏容器跳过，避免算出 0 宽画布
+      try{ chart.changeSize(w, entry.height || 250); }catch(e){}
+    });
+  }
+  window.addEventListener('resize',()=>{
+    clearTimeout(_chartResizeTimer);
+    _chartResizeTimer = setTimeout(resizeCharts, 120);
+  });
   /* AntV 数据可视化色板（Ant Design 规范） */
   const ANT_PALETTE = ['#5B8FF9','#5AD8A6','#5D7092','#F6BD16','#E8684A','#6DC8EC','#9270CA','#FF9D4D'];
   function chartTheme(){
@@ -265,7 +294,7 @@ window.CMS = (function(){
       primary:dark?'#4096ff':'#1677ff',
     };
   }
-  function disposeCharts(){ charts.splice(0).forEach(c=>{ try{c.destroy();}catch(e){} }); }
+  function disposeCharts(){ charts.splice(0).forEach(x=>{ try{(x.chart||x).destroy();}catch(e){} }); }
   /* 面积趋势图 */
   function areaChart(container, data, color){
     if(!window.G2) return;
@@ -282,7 +311,7 @@ window.CMS = (function(){
     chart.area().position('date*value').color(c).style({fillOpacity:.15}).animate({appear:{animation:'fadeIn',duration:700}});
     chart.line().position('date*value').color(c).size(2.5).shape('smooth').animate({appear:{animation:'waveIn',duration:800}});
     chart.point().position('date*value').color(c).size(3).shape('circle').style({stroke:th.tooltipBg,lineWidth:2});
-    chart.render(); charts.push(chart);
+    chart.render(); charts.push({chart, el:(container && container.nodeType ? container : document.getElementById(container)), height:250});
   }
   /* 环形分布图 */
   function pieChart(container, data){
@@ -297,7 +326,7 @@ window.CMS = (function(){
       .adjust('stack').style({lineWidth:2,stroke:th.tooltipBg})
       .label('type',{offset:-14,style:{fill:th.tooltipBg,fontSize:11,fontWeight:600}})
       .animate({appear:{animation:'waveIn',duration:800}});
-    chart.render(); charts.push(chart);
+    chart.render(); charts.push({chart, el:(container && container.nodeType ? container : document.getElementById(container)), height:250});
   }
   /* 柱状图 */
   function columnChart(container, data, color){
@@ -312,7 +341,7 @@ window.CMS = (function(){
     chart.interval().position('name*value').color(color||th.primary)
       .style({radius:[4,4,0,0]})
       .animate({appear:{animation:'growInY',duration:700}});
-    chart.render(); charts.push(chart);
+    chart.render(); charts.push({chart, el:(container && container.nodeType ? container : document.getElementById(container)), height:250});
   }
 
 

@@ -6,16 +6,16 @@
   <script>window.STATIC_VER='__STATIC_VER__';</script>
   <title>__SITE_NAME__ - AI 轻量化管理后台</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.ico?v=__STATIC_VER__">
-  <link rel="stylesheet" href="/admin/vendor/bootstrap/bootstrap.min.css?v=__STATIC_VER__-b17">
-  <link rel="stylesheet" href="/admin/vendor/bootstrap-icons/bootstrap-icons.css?v=__STATIC_VER__-b17">
-  <link rel="stylesheet" href="/admin/vendor/wangeditor/style.css?v=__STATIC_VER__-b17">
-  <link rel="stylesheet" href="/admin/css/admin.css?v=__STATIC_VER__-b17">
+  <link rel="stylesheet" href="/admin/vendor/bootstrap/bootstrap.min.css?v=__STATIC_VER__-b18">
+  <link rel="stylesheet" href="/admin/vendor/bootstrap-icons/bootstrap-icons.css?v=__STATIC_VER__-b18">
+  <link rel="stylesheet" href="/admin/vendor/wangeditor/style.css?v=__STATIC_VER__-b18">
+  <link rel="stylesheet" href="/admin/css/admin.css?v=__STATIC_VER__-b18">
 </head>
 <body class="theme-light">
 <!-- ============ 全局 Loading 遮罩 ============ -->
 <div id="global-loading" class="global-loading show">
   <div class="gl-inner">
-    <img class="gl-spinner" src="/admin/static/svg/loading-2.svg?v=__STATIC_VER__-b17" alt="">
+    <img class="gl-spinner" src="/admin/static/svg/loading-2.svg?v=__STATIC_VER__-b18" alt="">
   </div>
 </div>
 
@@ -24,7 +24,7 @@
   <div class="login-shell">
     <!-- 左：品牌展示 -->
     <section class="login-hero">
-	<div class="videoContainer"><video id="login-video" autoplay muted loop playsinline disablepictureinpicture preload="auto" poster="./static/media/loginAnimationPoster.9aa924bfe619e71d5d29.png?v=__STATIC_VER__-b17" class="videoBG"><source src="/admin/static/media/videoBG.17363418b3c2246a0e27.mp4?v=__STATIC_VER__-b17" type="video/mp4"></video></div>
+	<div class="videoContainer"><video id="login-video" autoplay muted loop playsinline disablepictureinpicture preload="auto" poster="./static/media/loginAnimationPoster.9aa924bfe619e71d5d29.png?v=__STATIC_VER__-b18" class="videoBG"><source src="/admin/static/media/videoBG.17363418b3c2246a0e27.mp4?v=__STATIC_VER__-b18" type="video/mp4"></video></div>
       <div class="lh-grid"></div>
       <div class="lh-glow lh-glow-1"></div>
       <div class="lh-glow lh-glow-2"></div>
@@ -77,6 +77,10 @@
     </div>
     <div class="nav-search"><i class="bi bi-search"></i><input id="menu-search" placeholder="搜索菜单..."><kbd>⌘K</kbd></div>
     <nav id="cms-menu" class="cms-menu"></nav>
+    <div class="nav-foot" id="nav-foot">
+      <div class="nav-foot-row"><span class="dot-online"></span><span>服务运行中</span></div>
+      <div class="nav-foot-row muted"><i class="bi bi-stopwatch"></i>响应耗时 <b class="nav-resp" id="nav-resp-time">—</b></div>
+    </div>
   </aside>
 
   <div class="main-wrap">
@@ -140,12 +144,12 @@
   </div>
 </dialog>
 
-<script data-cfasync="false" src="/admin/vendor/bootstrap/bootstrap.bundle.min.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/vendor/g2/g2.min.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/vendor/wangeditor/index.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/vendor/just-validate.min.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/vendor/gsap/gsap.min.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/js/core.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/vendor/bootstrap/bootstrap.bundle.min.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/vendor/g2/g2.min.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/vendor/wangeditor/index.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/vendor/just-validate.min.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/vendor/gsap/gsap.min.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/js/core.js?v=__STATIC_VER__-b18"></script>
 <script>
 /* 登录页背景视频：强制静音自动循环播放（个别浏览器拦截时兜底重试） */
 (function(){
@@ -160,10 +164,10 @@
     document.addEventListener(ev,tryPlay,{once:true,capture:true}));
 })();
 </script>
-<script data-cfasync="false" src="/admin/js/upload.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/js/crud.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/js/form.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/js/app.js?v=__STATIC_VER__-b17"></script>
-<script data-cfasync="false" src="/admin/js/motion.js?v=__STATIC_VER__-b17"></script>
+<script data-cfasync="false" src="/admin/js/upload.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/js/crud.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/js/form.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/js/app.js?v=__STATIC_VER__-b18"></script>
+<script data-cfasync="false" src="/admin/js/motion.js?v=__STATIC_VER__-b18"></script>
 </body>
 </html>

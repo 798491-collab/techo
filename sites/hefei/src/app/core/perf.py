@@ -85,6 +85,15 @@ class ResponseTimeMiddleware:
                 ms = (time.perf_counter() - start) * 1000.0
                 headers = MutableHeaders(scope=message)
                 headers["X-Response-Time"] = f"{ms:.2f}ms"
+                # 页面脚本无法读取当前文档自身的响应头，这里额外下发一次性 cookie，
+                # 让前台页脚能显示「本次请求自己的耗时」（非滑动窗口平均值）。
+                # 仅对 HTML 响应设置；不设 HttpOnly（页面 JS 需读取），Max-Age 极短避免残留。
+                ctype = headers.get("content-type", "")
+                if ctype.startswith("text/html"):
+                    headers.append(
+                        "set-cookie",
+                        f"rt_page_ms={ms:.2f}; Path=/; Max-Age=3; SameSite=Lax",
+                    )
                 self.stats.record(ms, scope.get("path", ""))
                 recorded = True
             await send(message)

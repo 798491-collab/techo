@@ -133,18 +133,26 @@ def base_context(request: Request, db: Session, cfg: SiteConfig, extra: dict | N
         banners = cache.remember("banners", _load_banners, ttl=300)
     except Exception:
         banners = []
-    # 后台覆盖的站点设置
+    # 后台覆盖的站点设置：内容变更/设置保存时后台统一 cache.clear()，可安全缓存
     settings = {}
     try:
         from app.core.database import Setting
-        settings = {s.key: jloads(s.value, s.value) for s in db.scalars(select(Setting)).all()}
+
+        def _load_settings():
+            return {s.key: jloads(s.value, s.value) for s in db.scalars(select(Setting)).all()}
+
+        settings = dict(cache.remember("site_settings", _load_settings, ttl=600) or {})
     except Exception:
         pass
 
-    stat_rows = db.scalars(select(Content).where(
-        Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(), Content.model == "stat"
-    ).order_by(Content.sort, Content.id)).all()
-    stats = [{"value": c.title, "label": c.summary or ""} for c in stat_rows]
+    # 首页统计数字（stat 模型）：低频变化，跟随整页缓存一起失效
+    def _load_stats():
+        rows = db.scalars(select(Content).where(
+            Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(), Content.model == "stat"
+        ).order_by(Content.sort, Content.id)).all()
+        return [{"value": c.title, "label": c.summary or ""} for c in rows]
+
+    stats = cache.remember("site_stats", _load_stats, ttl=300)
     settings["theme_active"] = str(getattr(request.app.state, "theme_name", None) or "default")
     settings["static_version"] = str(getattr(request.app.state, "static_version", None) or settings.get("static_version") or "1")
 
@@ -322,7 +330,8 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
                         ids.append(cid)
                         stack.append(cid)
                 return list(dict.fromkeys(ids))
-            cat_scope = cat_ids(int(cat.id))
+            # 栏目树变动时后台会 cache.clear()，可安全缓存范围计算
+            cat_scope = cache.remember(f"cat_scope:{int(cat.id)}", lambda: cat_ids(int(cat.id)), 600)
             def items():
                 stmt = select(Content).where(Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(),
                                              Content.category_id.in_(cat_scope)).order_by(
@@ -375,9 +384,13 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
 
         if template == "search.html":
             from sqlalchemy import or_
-            stmt = select(Content).where(Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(),
-                                         or_(Content.title.like(f"%{keyword}%"), Content.summary.like(f"%{keyword}%"))) if keyword else select(Content).where(Content.id < 0)
-            extra["items"] = [to_brief(c) for c in db.scalars(stmt.order_by(func.coalesce(Content.publish_at, Content.created_at).desc()).limit(30)).all()]
+
+            def do_search():
+                stmt = select(Content).where(Content.deleted_at.is_(None), Content.status == "publish", _pub_visible(),
+                                             or_(Content.title.like(f"%{keyword}%"), Content.summary.like(f"%{keyword}%"))) if keyword else select(Content).where(Content.id < 0)
+                return [to_brief(c) for c in db.scalars(stmt.order_by(func.coalesce(Content.publish_at, Content.created_at).desc()).limit(30)).all()]
+            # 搜索页不走整页缓存，这里按关键词缓存结果集（内容变更时后台统一清缓存）
+            extra["items"] = cache.remember(f"search:{keyword or ''}", do_search, 120)
             extra["keyword"] = keyword
 
         ctx = base_context(request, db, cfg, extra)

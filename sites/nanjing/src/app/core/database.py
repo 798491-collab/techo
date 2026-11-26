@@ -681,6 +681,18 @@ class Database:
                 for name, ddl in cols:
                     if name not in existing:
                         conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
+            # 前台高频查询的复合索引：CREATE INDEX IF NOT EXISTS 幂等，老库启动时自动补齐。
+            # 列表页按 栏目/状态/时间 过滤排序，首页推荐按 模型/置顶/排序 取前 N 条。
+            for name, table, cols in (
+                ("ix_content_pub_model", "content", "status, deleted_at, model, is_top, sort, id"),
+                ("ix_content_pub_date", "content", "status, deleted_at, publish_at, created_at"),
+                ("ix_content_cat_pub", "content", "category_id, status, deleted_at, sort, id"),
+                ("ix_form_record_read", "form_record", "is_read, created_at"),
+            ):
+                try:
+                    conn.execute(f"CREATE INDEX IF NOT EXISTS {name} ON {table}({cols})")
+                except Exception:
+                    pass  # 老库字段缺失时跳过，不影响启动
             conn.commit()
         except Exception:
             conn.rollback()

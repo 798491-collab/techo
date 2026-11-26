@@ -6142,3 +6142,77 @@ body.theme-dark{color-scheme:dark}
 .perf-label{display:block;font-size:12px;color:var(--color-text-tertiary);margin-bottom:4px}
 .perf-value{font-size:19px;font-weight:600;color:var(--color-primary);line-height:1.2}
 .perf-value small{font-size:11px;font-weight:400;color:var(--color-text-tertiary);margin-left:2px}
+
+/* ==========================================================================
+   H5 布局修复（2026-11-26）：
+   1) 从宽屏缩窄到手机时 .cms-sidenav.collapsed + .main-wrap 的 64px 偏移
+      会覆盖移动端 margin-left:0，导致内容整体左移、右侧露出灰底；
+   2) G2 图表的 canvas 是固定像素宽度，缩窄后旧宽度撑开文档产生横向滚动。
+      JS 侧已在 core.js 中按容器实际宽度 changeSize，这里再做 CSS 兜底。
+   ========================================================================== */
+@media (max-width: 768px) {
+    .cms-sidenav.collapsed + .main-wrap {
+        margin-left: 0 !important
+    }
+
+    html, body {
+        overflow-x: hidden
+    }
+
+    .main-wrap, .content, .stats-grid, .perf-strip, .chart-grid, .dash-grid,
+    .chart-box, .card-box, .table-responsive {
+        min-width: 0;
+        max-width: 100%
+    }
+
+    .chart-canvas, .chart-canvas canvas {
+        max-width: 100%
+    }
+
+    /* 移动端折叠侧栏时 nav-foot 恢复为纵向，避免两个状态行被挤成一行 */
+    .cms-sidenav.collapsed .nav-foot {
+        display: block
+    }
+}
+
+/* 侧栏底部实时响应耗时（nav-foot 原先只有样式、没有 DOM） */
+.nav-foot-row .nav-resp {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--color-primary)
+}
+
+.nav-foot-row.muted .nav-resp {
+    color: var(--side-text-2)
+}
+
+/* ---- 健康检查页（开发管理） ---- */
+.health-summary{display:flex;align-items:center;gap:24px;flex-wrap:wrap;background:var(--color-bg-container);border:1px solid var(--color-border-secondary);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow-1);position:relative}
+.health-score{display:flex;flex-direction:column;align-items:center;min-width:110px;gap:2px;color:var(--color-success)}
+.health-score i{font-size:30px;line-height:1}
+.health-score b{font-size:17px;margin-top:4px}
+.health-score small{font-size:12px;color:var(--color-text-tertiary)}
+.health-summary.status-warn .health-score{color:var(--color-warning)}
+.health-summary.status-error .health-score{color:var(--color-danger)}
+.health-metrics{display:flex;flex:1;flex-wrap:wrap;gap:12px}
+.health-metrics>div{flex:1 1 110px;border-left:1px solid var(--color-split);padding-left:16px;display:flex;flex-direction:column;gap:4px}
+.health-metrics span{font-size:12px;color:var(--color-text-tertiary)}
+.health-metrics b{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.health-metrics b small{font-size:12px;font-weight:400;color:var(--color-text-tertiary);margin-left:2px}
+.health-time{font-size:12px;color:var(--color-text-tertiary);white-space:nowrap}
+.health-list{display:flex;flex-direction:column;gap:2px}
+.health-item{display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid var(--color-split);color:var(--color-success)}
+.health-item:last-child{border-bottom:0}
+.health-item.s-warn{color:var(--color-warning)}
+.health-item.s-error{color:var(--color-danger)}
+.health-item>i{font-size:18px;flex:none}
+.health-item .hc-body{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.health-item .hc-body b{font-size:14px;color:var(--color-text-primary);font-weight:600}
+.health-item .hc-body small{font-size:12px;color:var(--color-text-secondary);word-break:break-all}
+.health-item .hc-cost{font-size:12px;font-variant-numeric:tabular-nums;color:var(--color-text-tertiary);white-space:nowrap}
+@media (max-width:768px){
+  .health-summary{gap:14px;padding:16px}
+  .health-score{min-width:80px}
+  .health-metrics>div{padding-left:10px}
+  .health-time{width:100%}
+}
