@@ -8,6 +8,33 @@
 
 ---
 
+## v2.5.1 — 2026-11-26（当前）
+
+### 部署链路连环故障排查与修复（当天多次部署失败/回滚的完整根因链）
+1. **venv 被 reset 反复削坏**：`git reset --hard` 跨「删除 venv」提交会删掉 site-packages 中曾被
+   Git 跟踪的文件 → Pod CrashLoopBackOff / 文件响应截断（Cloudflare 520「资源全挂」的真实根源）。
+   - 部署脚本新增**依赖自检自愈**：按 requirements.txt 逐个核对 dist-info，缺失即用清华镜像重装
+     （60s 超时 + 3 次重试，失败回退官方源）；注意 fastapi 0.162+ 已移除 `fastapi.app` 模块，
+     自检不能用深层导入（会有 OOM 与假阳性双重问题）。
+2. **webhook 接收器 64Mi 内存限额**：部署子进程（python 自检/pip）与 Pod 共享 cgroup，
+   全部被 OOM 静默杀死（dmesg 可见 `oom_score_adj=992`）。修复：
+   - webhook-deploy.py 改用宿主机 `systemd-run` 把部署脚本放进独立 cgroup（输出经
+     `StandardOutput=file:` 重定向进部署日志），不可用时回退直接执行；
+   - 接收器限额 64Mi → 256Mi。
+3. **webhook token 被 reset 覆盖**：git 版 webhook.yaml 只有占位符，服务器手填的真实 token
+   会被 `git reset` 冲掉 → 接收器 403、部署触发失败。修复：部署脚本用 secrets 真实 token
+   渲染占位符后再 apply（值不变不触发重启），git 上不落任何真实凭据。
+4. **systemd-run 环境变量缺失**：单元里 `HOME` 为空 → git 报 dubious ownership、fetch 连续失败。
+   部署脚本补 `export HOME="${HOME:-/root}"`；git fetch/reset 增加重试（与 Drone CI 校验并发
+   操作同一仓库时 index.lock 偶发冲突）。
+5. **可观测性**：部署脚本加 EXIT trap（未预期退出留下行号与退出码日志）；健康检查 curl 瞬时
+   连接拒绝（滚动更新中途）不再中止脚本；Drone 部署步骤的失败关键词补全
+   （中止部署/异常退出/三次均失败），失败构建不再空等 900s。
+
+修复后全链路验证：push → CI → promote → 部署完成 → 五站健康检查全 200，release-history 正常记 OK。
+
+---
+
 ## v2.5.0 — 2026-11-26（当前）
 
 ### 安全加固
