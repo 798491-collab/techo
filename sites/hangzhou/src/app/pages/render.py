@@ -324,8 +324,10 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
                 total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
                 rows = db.scalars(stmt.offset((page - 1) * size).limit(size)).all()
                 return total, [to_brief(c) for c in rows]
-            cache_key = f"listv2:{slug}:{page}"
-            total, items_list = cache.remember(cache_key, items, 300)
+            # 注意：这里必须用独立变量名，不能覆盖上方的整页 cache_key（oss34:路径），
+            # 否则栏目页整页缓存永远写不进去，每次请求都全量渲染（实测 100ms vs 3ms）。
+            list_cache_key = f"listv2:{slug}:{page}"
+            total, items_list = cache.remember(list_cache_key, items, 300)
             extra.update({"category": to_dict(cat), "items": items_list, "total": total,
                           "page": page, "pages": max(1, (total + size - 1) // size)})
 
