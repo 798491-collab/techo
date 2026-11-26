@@ -36,8 +36,6 @@ Pod 不用 `hostNetwork`/`hostPort`，改由固定 ClusterIP 的 Service 暴露�
 `k8s/provision-secrets.sh`（幂等，部署脚本每次部署都会自动调用）：
 
 - WebHook Token：缺失时随机生成 → `k8s/secrets/webhook-token.txt`，并自动写入 webhook-receiver
-- KubePi 管理员密码：部署时随机生成并通过 KubePi API 改掉默认 `admin/kubepi`
-  → `k8s/secrets/kubepi-admin.txt`（若 API 改密未成功，首次登录系统强制要求改密，双保险）
 - 五站后台管理员密码：缺失时随机生成写入 `sites/<站>/.env`（与应用内首启生成规则一致，
   账号均为 `admin`；已有密码不会被覆盖）
 - **全部凭据统一登记** → `k8s/secrets/credentials.txt`（每次部署刷新，权限 600，类似
@@ -45,18 +43,9 @@ Pod 不用 `hostNetwork`/`hostPort`，改由固定 ClusterIP 的 Service 暴露�
 - 凭据文件存放在本目录 `secrets/`（.gitignore 已忽略），不写 `/root`、`/www/server` 等系统目录
 - 重新生成某凭据：删除 secrets/ 下对应文件后重跑脚本（或下次部署自动补齐）
 
-## 管理界面（KubePi，中文）
+## 管理入口
 
-- **KubePi**：现代化中文 K8s 面板（1Panel 团队出品），NodePort 30110
-- 外部访问：`http://<服务器IP>:10000/`（nginx 反代，含 WebSocket 支持）
-- 登录：账号 `admin` + 随机密码（部署时自动生成并改掉默认值，见 `k8s/secrets/credentials.txt`；
-  若改密未成功则默认 `admin/kubepi`，首次登录系统强制要求改密）
-- 首次使用需导入集群：「集群管理 → 添加集群」→ 认证方式 Token：
-  - API 地址 `https://<服务器IP>:6443`；Token 用服务器 `k8s/secrets/kubepi-cluster-token.txt`
-    （kubepi-user SA，cluster-admin，有效期 10 年）；跳过 TLS 校验（自签证书）
-- 数据持久化：宿主机 `/www/wwwroot/pysite/kubepi-data/`；重建：`kubectl apply -f k8s/kubepi.yaml`
-- 集群导入 Token：`k8s/secrets/kubepi-cluster-token.txt`（kubepi-user SA，cluster-admin，有效期 10 年；
-  重新生成：`kubectl -n kube-system create token kubepi-user --duration=87600h`）
+- K8s 资源管理统一走命令行 `kubectl`（或任意 k8s 客户端连 `https://<服务器IP>:6443`）
 - 接收器健康检查：`http://<服务器IP>:8300/healthz`（200 = 自动部署链路正常）
 - 全部运维入口汇总见仓库根 `README.md` 的「运维入口速查」
 
@@ -101,12 +90,11 @@ Pod 不用 `hostNetwork`/`hostPort`，改由固定 ClusterIP 的 Service 暴露�
 |------|------|------|
 | 发版清单 | 服务器 `scripts/release-history.txt` | 每次成功发版一行：时间 + commit + 提交说明 + 作者；失败/回滚也记录 |
 | 部署过程 | 服务器 `scripts/k3s-deploy.log` | 每次部署的完整过程（拉取版本、健康检查、回滚原因等） |
-| 修订历史 | KubePi → 工作负载 → 部署 → 详情 → 「修订历史」 | 每个修订版本的 Pod 注记里有 `pysite/commit`、`pysite/commit-subject`、`pysite/deployed-at`，可对比任意两版并一键回滚 |
+| 修订历史 | `kubectl -n pysite rollout history deployment/pysite-<站>` | 每个修订版本的 Pod 注记里有 `pysite/commit`、`pysite/commit-subject`、`pysite/deployed-at`，可对比任意两版并回滚 |
 | 命令行 | `kubectl -n pysite rollout history deployment/pysite-<站>` | 修订版本列表 |
 
-回滚到上一版：`kubectl -n pysite rollout undo deployment/pysite-<站>`（或直接在 KubePi 修订
-历史里点回滚）。注意：代码经 hostPath 挂载，回滚 Pod 的同时需 `git reset --hard <旧 commit>`
-同步代码；部署脚本的自动回滚已包含这两步。
+回滚到上一版：`kubectl -n pysite rollout undo deployment/pysite-<站>`。注意：代码经 hostPath 挂载，
+回滚 Pod 的同时需 `git reset --hard <旧 commit>` 同步代码；部署脚本的自动回滚已包含这两步。
 
 **脚本只有仓库内 `k8s/k3s-deploy.sh` 一份**（`/root/` 无需副本）：调用方先复制到 `/tmp` 再执行，既不会被 git pull 覆盖自身，也不污染系统目录。
 
@@ -116,8 +104,7 @@ Pod 不用 `hostNetwork`/`hostPort`，改由固定 ClusterIP 的 Service 暴露�
   同一个 webhook 接收器（8300），因此走的是上面这套已验证的部署/回滚逻辑；
 - Server：`drone/drone:2` 跑在 K3s（SQLite hostPath `k8s/drone-data/`，limits 128Mi）；
   Runner：`drone-runner-exec` 二进制跑在宿主机（无需 Docker），常驻内存可忽略；
-- 安装、Gitee OAuth、反代与排障的完整步骤见 **`k8s/DRONE.md`**；
-- 与 Gitee Go 的 `.workflow/ci.yml` 二选一即可，两者都只是往同一个 webhook 发触发。
+- 安装、Gitee OAuth 与排障的完整步骤见 **`k8s/DRONE.md`**。
 
 ## 常用命令
 

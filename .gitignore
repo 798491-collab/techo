@@ -80,8 +80,8 @@ sites/*/var/
 # K3s 凭据（自动生成，不入库）
 k8s/secrets/
 
-# KubePi 数据目录（挂载宿主机，不入库）
-kubepi-data/
+# 本地 Python 虚拟环境（不入库）
+venv/
 
 # Drone CI 数据目录（SQLite + runner 状态，挂载宿主机，不入库）
 k8s/drone-data/

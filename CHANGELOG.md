@@ -8,7 +8,24 @@
 
 ---
 
-## v2.4.0 — 2026-11-26（当前）
+## v2.4.1 — 2026-11-26（当前）
+
+### 清理
+- **遗留物全量清除**：删除仓库中不再使用的文件与目录（含从版本库移除历史误提交内容）：
+  - `venv/`（40MB 误提交的 Linux 虚拟环境，1728 个文件，加入 .gitignore）
+  - `k8s/kubepi.yaml`（KubePi 面板整体下线：同步删除 `provision-secrets.sh` 的 KubePi 改密段、
+    `.gitignore` 的 kubepi-data 条目、README/k8s 文档中全部 KubePi 引用）
+  - `scripts/deploy.sh`、`scripts/pysite`、`scripts/systemd/pysite@.service`（systemd 时代旧部署链，已被 `k8s/k3s-deploy.sh` 取代）
+  - `.workflow/`（Gitee Go 流水线，CI 已收口 Drone 单一入口；DRONE.md 对应章节改写为决策记录）
+  - `scripts/nginx/drone.conf.example`（Drone 走 IP:30080 直连，无域名反代需求；DRONE.md 安装步骤重编号）
+  - 本地未跟踪残留：`backups/`（11-24 迁移备份 274MB）、`sites/nanjing/backups/`（11-17 旧库备份）
+- **服务器侧 KubePi 下线**（SSH 执行）：删除 kube-system 下 deploy/service `kubepi`、
+  SA `kubepi-user` 及 ClusterRoleBinding（cluster-admin 权限面一并移除）；删除宿主机
+  `kubepi-data/`、`secrets/kubepi-admin.txt`、`kubepi-cluster-token.txt`；credentials.txt
+  移除 KubePi 段；nginx 删除 `k8s-dashboard.conf`（:10000 反代）与 5 份 `*_bak` 旧站配置，`nginx -t` 通过后 reload。
+- `k3s-deploy.sh` 注释同步（修订历史指向 `kubectl rollout history`）。
+
+## v2.4.0 — 2026-11-26
 
 ### 安全 / 权限（RBAC）
 - **系统菜单按角色 rules 过滤**：`/api/admin/menu` 按「角色 rules → 菜单开关 → 内容模型」三层过滤，空分组不下发；前端 `enterApp` 越权 hash 一律回落到有权限的页面，无权限时显示「暂无可访问菜单」。`bc89227`

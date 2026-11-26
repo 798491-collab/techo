@@ -47,14 +47,7 @@ Gitee → 设置 → 第三方应用 → 创建应用：
 > 当前服务器已按上面这对地址完成配置（2026-11-26），Gitee OAuth 已生效；
 > 若改用域名，需同步修改 Secret 里的 `DRONE_SERVER_HOST` 并重启 server。
 
-### 2. nginx 反代
-
-```bash
-cp scripts/nginx/drone.conf.example scripts/nginx/<你的CI域名>.conf
-# 改 server_name 与日志路径 → 域名解析到本机 → 重载 nginx
-```
-
-### 3. 一键安装
+### 2. 一键安装
 
 在服务器上：
 
@@ -66,7 +59,7 @@ sudo bash k8s/install-drone.sh
 脚本会依次问你：CI 对外地址（如 `ci.example.com`）、Client ID、Client Secret、Gitee 用户名。
 然后自动完成：创建 Secret → 部署 server → 下载安装 runner → 启动 → 等待就绪。
 
-### 4. 首次使用
+### 3. 首次使用
 
 1. 浏览器打开 `http://45.91.139.246:30080`（或你的 CI 域名），用 Gitee 账号登录；
 2. Repos 页找到 `techo.git`，点 **Activate**（激活时 Drone 会自动在 Gitee 注册 WebHook 并写好验签密码）；
@@ -75,7 +68,7 @@ sudo bash k8s/install-drone.sh
 
 > ⚠️ **仓库显示名必须与 Drone 库里的 `repo_name` 完全一致（本项目是 `techo`）**。Gitee 的 webhook payload 里 `repository.name` 用的是**显示名**（当初叫 `Techo一杯茶轻量自托管站群CMS`），而 Drone 的 Gitee 驱动用 `name` 查库（激活时却按 `path` 存）——两者不一致时 push 会返回 `{"message":"Cannot find repository"}` 且不产生 build。2026-11-26 已把 Gitee 显示名改为 `techo`（路径/clone 地址不变），push 验证通过。若日后改名，务必同步 Drone 库里的 `repos.repo_name`。
 
-### 5. push 自动触发（当前状态：已配置）
+### 4. push 自动触发（当前状态：已配置）
 
 Gitee 仓库 `donghaichen/techo` → 管理 → WebHooks，当前只应保留**一条**：
 
@@ -109,9 +102,4 @@ curl -fsS http://127.0.0.1:30080/healthz               # 健康检查
 
 ## 与 Gitee Go 的关系
 
-`.workflow/ci.yml`（Gitee Go 流水线）与本方案都能提供手动按钮，**二选一即可**：
-
-- **Drone（本方案）**：开源、自建、不依赖云端额度，代码和状态都在自己服务器；
-- **Gitee Go**：纯云端零运维，但闭源、依赖云端额度与主机组 agent。
-
-若要启用 Gitee Go，需先停用 Drone 的 Gitee WebHook（管理 → WebHooks → 禁用那条 `:30080/hook`），避免 push 触发两次部署。当前仓库已切到 Drone 单一入口，`.workflow/ci.yml` 保留但不接 WebHook。
+仓库原配有 Gitee Go 流水线（`.workflow/ci.yml`），2026-11-26 收口到 Drone 单一入口后已**删除**，Gitee Go 不再使用。若日后要启用 Gitee Go，需先停用 Drone 的 Gitee WebHook（管理 → WebHooks → 禁用那条 `:30080/hook`），避免 push 触发两次部署。

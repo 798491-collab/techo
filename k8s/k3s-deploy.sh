@@ -22,7 +22,7 @@ fi
 cd "$REPO"
 log "===== K3s 部署开始 ====="
 
-# 0. 凭据自动配置（幂等：WebHook Token / KubePi 管理密码 / 五站后台密码缺失时随机生成，
+# 0. 凭据自动配置（幂等：WebHook Token / 五站后台密码缺失时随机生成，
 #    并统一登记到 k8s/secrets/credentials.txt）
 bash "$REPO/k8s/provision-secrets.sh" 2>&1 | while IFS= read -r l; do log "凭据: $l"; done
 
@@ -84,7 +84,7 @@ log "五站 Service（ClusterIP）已就绪"
 #    配置（resources / 探针 / 更新策略 / hostPort 等）全部以仓库 YAML 为准，
 #    每次部署 apply 一次，消除「线上与 YAML 不一致」的配置漂移。
 #    把 commit / 说明 / 时间通过占位符注入 Pod 模板注记，触发滚动更新 = 一个新修订版本；
-#    KubePi 的 Deployment「修订历史」里即可看到版本号与时间，并支持一键回滚。
+#    `kubectl rollout history` 里即可看到版本号与时间，并支持一键回滚。
 SUBJ=$(git log -1 --format='%s' "$NEW" | sed 's/["\\]/ /g')
 AUTHOR=$(git log -1 --format='%an' "$NEW" | sed 's/["\\]/ /g')
 DEPLOY_AT=$(date '+%F %T')
