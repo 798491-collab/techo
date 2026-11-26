@@ -24,12 +24,15 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 30080
               hostPort: 30080 # 宿主机 exec runner 经 127.0.0.1:30080 连接
           envFrom:
             - secretRef:
                 name: drone-secrets
           env:
+            # DRONE_SERVER_HOST 带端口时，容器必须监听同一端口，否则报 invalid port configuration
+            - name: DRONE_SERVER_PORT
+              value: ":30080"
             - name: DRONE_DATABASE_DRIVER
               value: sqlite3
             - name: DRONE_DATABASE_DATASOURCE
@@ -66,4 +69,4 @@ spec:
   ports:
     - name: http
       port: 30080
-      targetPort: 80
+      targetPort: 30080

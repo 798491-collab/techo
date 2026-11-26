@@ -144,12 +144,21 @@ def port_in_use(port):
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
-def health_ok(port):
+def health_ok(port, verbose=False):
+    """返回 (健康?, 响应耗时毫秒)；verbose=False 时兼容旧调用返回 bool。"""
+    t0 = time.perf_counter()
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=1.5) as r:
-            return r.status == 200
+            ok = r.status == 200
+            ms = (time.perf_counter() - t0) * 1000
+            if verbose:
+                print(f"  健康检查 /api/health: HTTP {r.status} 响应耗时 {ms:.2f}ms")
+            return (ok, ms) if verbose else ok
     except Exception:
-        return False
+        ms = (time.perf_counter() - t0) * 1000
+        if verbose:
+            print(f"  健康检查 /api/health: 失败 响应耗时 {ms:.2f}ms")
+        return (False, ms) if verbose else False
 
 
 def load_pid():
@@ -169,7 +178,9 @@ def save_pid(pid):
 def status(verbose=True):
     pid = load_pid()
     in_use = port_in_use(PORT)
-    ok = health_ok(PORT) if in_use else False
+    ok = health_ok(PORT, verbose=verbose) if in_use else False
+    if isinstance(ok, tuple):
+        ok = ok[0]
     state = "运行中" if ok else ("端口占用" if in_use else "未启动")
     if verbose:
         print(f"{KEY:<10} {PORT:<7} {state:<10} {str(pid or '-'):<9} {NAME}")

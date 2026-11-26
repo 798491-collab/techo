@@ -116,6 +116,16 @@
     }catch(e){el.innerHTML=`<div class="card-box fg-danger">加载失败：${esc(e.message||e)}</div>`;}
   }
 
+  /* 响应耗时条：与 /api/health 同源（后端 PerfStats 滑动窗口） */
+  function perfStrip(p){
+    if(!p || !p.count) return '';
+    const fmt = v => (v==null? '-' : (v>=100 ? v.toFixed(0) : v.toFixed(1)));
+    const values=[fmt(p.avg_ms),fmt(p.p50_ms),fmt(p.p95_ms),fmt(p.p99_ms),fmt(p.max_ms),String(p.count)];
+    const labels=['平均响应','P50','P95','P99','最慢','样本数'];
+    return `<div class="perf-strip">${values.map((v,i)=>
+      `<div class="perf-item"><span class="perf-label">${labels[i]}</span><strong class="perf-value">${esc(v)}${i<5?'<small>ms</small>':''}</strong></div>`).join('')}</div>`;
+  }
+
   /* ============ 仪表盘 ============ */
   async function renderDashboard(el){
     const r=await api('/api/admin/dashboard'); const d=r.data||{}; const s=d.stats||{};
@@ -130,6 +140,7 @@
     const ms=Object.entries(d.model_stats||{});
     el.innerHTML=`
       <div class="stats-grid">${cards.map(c=>`<div class="stat-card ${c[3]}"><i class="bi ${c[2]} ic"></i><div class="num" data-num="${c[1]??0}">0</div><div class="label">${c[0]}</div></div>`).join('')}</div>
+      ${perfStrip(d.perf)}
       <div class="chart-grid">
         <div class="chart-box"><div class="chart-title"><i class="bi bi-activity"></i> 内容发布趋势</div><div class="chart-sub">最近 7 天新增内容统计</div><div class="chart-canvas" id="chart-trend"></div></div>
         <div class="chart-box"><div class="chart-title"><i class="bi bi-pie-chart"></i> 内容模型分布</div><div class="chart-sub">各类型内容占比</div><div class="chart-canvas" id="chart-pie"></div></div>

@@ -18,7 +18,7 @@ from pathlib import Path
 
 SITE_ROOT = Path(__file__).resolve().parents[1]
 # 字节码缓存统一写入 data，不散落在站点根目录
-sys.pycache_prefix = str(ROOT / "storage" / "pycache")
+sys.pycache_prefix = str(SITE_ROOT / "storage" / "pycache")
 
 
 def base_url() -> str:
@@ -50,9 +50,10 @@ def main() -> int:
     print(f"站点冒烟测试: {base_url()}")
     results = []
 
-    code, body, _ = fetch("/api/health")
+    code, body, headers = fetch("/api/health")
     ok = code == 200 and '"status":"ok"' in body.replace(" ", "")
-    results.append(check("GET /api/health", ok, f"HTTP {code}"))
+    rt = headers.get("X-Response-Time", "-")
+    results.append(check("GET /api/health", ok, f"HTTP {code} 响应耗时 {rt}"))
 
     code, body, _ = fetch("/")
     results.append(check("GET / (首页)", code == 200, f"HTTP {code}"))

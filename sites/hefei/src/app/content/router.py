@@ -372,6 +372,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     except Exception:
         pass
     return ok({
+        "perf": request.app.state.perf.snapshot(),
         "site": {"name": cfg.name, "short_name": cfg.short_name, "theme": cfg.theme, "port": cfg.port},
         "stats": {
             "content": count(Content, Content.deleted_at.is_(None)),

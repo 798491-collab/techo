@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import mimetypes
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from app.core.cache import FileCache
+from app.core.perf import PerfStats, ResponseTimeMiddleware
 from app.core.database import Database, Setting
 from app.core.settings import ADMIN_DIR, THEMES_ROOT, Settings, load_settings
 from app.core.state import set_static_version, set_theme
@@ -152,6 +154,9 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
     app = FastAPI(title=cfg.key or "PySite", version="2.0", lifespan=lifespan)
     # HTML/CSS/JS/JSON 压缩传输（nginx 只压它自己认得的类型，代理响应需要应用层兜底）
     app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=1)
+    # 响应耗时采集（纯 ASGI，开销可忽略）：X-Response-Time 响应头 + 内存滑动窗口
+    app.state.perf = PerfStats()
+    app.add_middleware(ResponseTimeMiddleware, stats=app.state.perf)
     app.state.cfg = cfg
     app.state.db = db
     app.state.cache = cache
@@ -283,7 +288,8 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
         app.mount("/admin", StaticFiles(directory=str(ADMIN_DIR), html=True), name="admin")
 
     @app.get("/api/health")
-    async def health():
+    async def health(request: Request):
+        t0 = time.perf_counter()
         from app.core.brand import brand_public
         # 站点名以数据库「基础设置 site_name」为准（配置文件不再承载站点内容）
         db_name = ""
@@ -301,7 +307,12 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
                 session.close()
         except Exception:
             pass
-        return {"status": "ok", "site": cfg.key, "name": db_name or cfg.name, "brand": brand_public()}
+        return {
+            "status": "ok", "site": cfg.key, "name": db_name or cfg.name,
+            "brand": brand_public(),
+            "response_time_ms": round((time.perf_counter() - t0) * 1000, 2),
+            "perf": request.app.state.perf.snapshot(),
+        }
 
     @app.get("/favicon.ico", include_in_schema=False)
     async def favicon():

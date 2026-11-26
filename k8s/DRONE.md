@@ -71,6 +71,7 @@ curl -fsS http://127.0.0.1:30080/healthz               # 健康检查
 
 | 现象 | 原因 / 处理 |
 |---|---|
+| Pod 反复重启，日志报 `Invalid port configuration` | `DRONE_SERVER_HOST` 带端口时，容器必须监听同一端口：`drone.yaml` 里 `containerPort`/`hostPort` 均为 30080，且 env 有 `DRONE_SERVER_PORT=:30080`（缺一不可） |
 | 登录跳回 Gitee 报 redirect_uri 不符 | OAuth 回调地址与 `DRONE_SERVER_HOST` 必须完全一致（含 http/端口） |
 | Builds 页显示 `no runners available` | runner 没连上：`tail /var/log/drone-runner-exec/log.txt`，核对 `DRONE_RPC_SECRET` 与 server Secret 一致 |
 | 点运行后日志卡在「已提交队列」 | 检查 `tail -f scripts/k3s-deploy.log`，多半是 webhook token 文件或 8300 接收器问题 |
