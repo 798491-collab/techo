@@ -21,6 +21,8 @@ fi
 
 cd "$REPO"
 log "===== K3s 部署开始 ====="
+# 任何未预期退出（set -e 触发）都留下一行带行号的日志，避免再出现静默死亡
+trap 'rc=$?; if [ $rc -ne 0 ] && [ $rc -ne 1 ]; then log "部署脚本异常退出（第 $LINENO 行，exit=$rc）"; fi' EXIT
 
 # 0. 凭据自动配置（幂等：WebHook Token / 五站后台密码缺失时随机生成，
 #    并统一登记到 k8s/secrets/credentials.txt）
@@ -45,12 +47,11 @@ NEED_INSTALL=0
 python3 - "$SP" "$REQ" <<'PY' || NEED_INSTALL=1
 import sys, pathlib
 sp, req = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
-# 1) 深层导入自检：只 import 顶层包会命中「命名空间包」假阳性（__init__.py 被删也能过）
+# 1) 顶层导入冒烟自检（注意：fastapi 0.162+ 已移除 fastapi.app 模块，勿用深层导入当检查项）
 sys.path.insert(0, str(sp))
-import fastapi.app, uvicorn.main, jinja2.runtime, sqlalchemy.orm, PIL.Image, \
-       pypinyin.core, pymysql.connections, httpx._client, pydantic.main, \
-       starlette.applications, greenlet, markupsafe, anyio, h11, click
-# 2) 固定版本 dist-info 全量核对：requirements.txt 里每个 pin 都必须有对应 dist-info
+import fastapi, uvicorn, PIL.Image, jinja2, sqlalchemy.orm, pypinyin, pymysql, \
+       httpx, pydantic, starlette.applications, greenlet, markupsafe, anyio, h11, click, multipart
+# 2) requirements.txt 里每个固定版本都必须有对应 dist-info（reset 删包后此检查必挂）
 missing = []
 for line in req.read_text(encoding="utf-8").splitlines():
     line = line.strip()
