@@ -122,6 +122,14 @@ for s in $SITES; do
 done
 log "五站 Service（ClusterIP）已就绪"
 
+# 3.5 webhook 接收器：git 版 webhook.yaml 只含占位符，这里用 secrets 里的真实
+#     token 渲染后再 apply（值不变则不会触发 Pod 重启，配置漂移自动消除）
+if [ -s "$REPO/k8s/secrets/webhook-token.txt" ]; then
+  sed "s|<WEBHOOK_TOKEN>|$(tr -d '\r\n' < "$REPO/k8s/secrets/webhook-token.txt")|g" \
+    "$REPO/k8s/webhook.yaml" | kubectl -n "$NS" apply -f - >/dev/null 2>&1 \
+    || log "警告：webhook.yaml 应用失败（沿用现有接收器配置）"
+fi
+
 # 4. 发版：apply 仓库 deploy YAML，让 YAML 成为唯一真相源
 #    配置（resources / 探针 / 更新策略 / hostPort 等）全部以仓库 YAML 为准，
 #    每次部署 apply 一次，消除「线上与 YAML 不一致」的配置漂移。
