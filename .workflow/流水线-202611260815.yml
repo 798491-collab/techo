@@ -1,77 +1,43 @@
 version: "1.0"
-name: 构建、镜像构建、部署到Kubernetes集群
-displayName: 构建、镜像构建、部署到Kubernetes集群
-stages:
-- name: 构建
-  displayName: 构建
-  strategy: naturally
-  trigger: auto
-  steps:
-  - step: build@python
-    name: ""
-    displayName: Python 构建
-    pythonVersion: "3.9"
-    commands:
-    - pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-    - "# 可以使用pip下载依赖"
-    - "# pip install --user -r requirements.txt"
-    - python --version
-    artifacts:
-    - name: BUILD_ARTIFACT
-      path:
-      - ./
-      type: .tar.gz
-    notify: []
-    strategy:
-      retry: "0"
-      resource:
-        cpu: "2"
-        memory: "4"
-- name: 镜像构建
-  displayName: 镜像构建
-  strategy: naturally
-  trigger: auto
-  steps:
-  - step: build@docker
-    name: ""
-    displayName: 镜像构建
-    type: account
-    repository: ""
-    username: ""
-    password: ""
-    tag: "${GITEE_PIPELINE_BUILD_NUMBER}"
-    dockerfile: ./Dockerfile
-    context: ""
-    artifacts: "${BUILD_ARTIFACT}"
-    isCache: false
-    notify: []
-    strategy:
-      retry: "0"
-      resource:
-        cpu: "2"
-        memory: "4"
-- name: 部署
-  displayName: 部署
-  strategy: naturally
-  trigger: auto
-  steps:
-  - step: deploy@k8s
-    name: ""
-    displayName: K8S部署
-    version: v1.16.4
-    certificate: "{explicitNull=true}"
-    namespace: default
-    yaml: ./deployment.yaml
-    isReplace: "{explicitNull=true}"
-    skiptls: "{explicitNull=true}"
-    notify: []
-    strategy:
-      retry: "0"
-      resource:
-        cpu: "2"
-        memory: "4"
+name: 手动部署（Build Now）
+displayName: 手动部署（Build Now）
+
+# 只在页面点「运行」时触发，不随 git push 自动跑。
+# 现有 git push -> webhook -> 自动部署链路保持不动，二者互不干扰。
 triggers:
   trigger: manual
 notify: []
 strategy:
   blocking: true
+
+stages:
+  - name: 部署五站点
+    displayName: 部署五站点
+    strategy: naturally
+    trigger: auto
+    steps:
+      # 用「主机执行」插件在服务器上跑仓库内的部署脚本，
+      # 不构建镜像、不推镜像仓库、不经过 Gitee Go 的 K8S 插件。
+      # 先 cp 到 /tmp 再执行：脚本内部有 git reset --hard，直接跑仓库里的那份
+      # 会在发版时把正在执行的脚本自身覆盖掉（bash 边读边执行会错乱）。
+      - step: shell@agent
+        name: deploy
+        displayName: 执行 k3s 部署脚本
+        hostGroupID: pysite-server
+        script: |
+          set -e
+          REPO=/www/wwwroot/pysite
+          RUN=$(mktemp /tmp/pysite-deploy-XXXXXX.sh)
+          cp "$REPO/k8s/k3s-deploy.sh" "$RUN"
+          chmod +x "$RUN"
+          trap 'rm -f "$RUN"' EXIT
+          bash "$RUN"
+          echo "===== 部署完成，站点状态 ====="
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+          kubectl -n pysite get pod -o wide
+        notify: []
+        strategy:
+          retry: "0"
+        resource:
+          cpu: "1"
+          memory: "1"
