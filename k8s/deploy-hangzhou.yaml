@@ -62,9 +62,9 @@ spec:
           resources:
             requests:
               cpu: "50m"
-              memory: "96Mi"
+              memory: "64Mi"
             limits:
-              memory: "384Mi"
+              memory: "256Mi"
       volumes:
         - name: site
           hostPath:

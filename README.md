@@ -84,21 +84,54 @@ python start.py stop     # 停止
 - 账号：`admin` + 随机密码（部署时自动生成）
 - 可视化管理 Pod / Deployment / 日志 / 终端 / 重启
 
-### 常用命令
+### 常用运维命令
 
 ```bash
-# 查看 Pod 状态
-kubectl -n pysite get pod -o wide
+# ---------- Pod / Deployment ----------
+kubectl -n pysite get pod -o wide                          # Pod 状态、RESTARTS 次数
+kubectl -n pysite get deploy                               # 副本与可用状态
+kubectl -n pysite describe pod <pod名>                     # 重点看 Last State / Reason（OOMKilled 等）
+kubectl -n pysite logs deploy/pysite-nanjing --tail=50     # 站点日志
+kubectl -n pysite logs <pod名> --previous --tail=80        # 崩溃前一份日志
+kubectl -n pysite rollout restart deploy/pysite-nanjing    # 重启站点（会短暂 502）
+kubectl -n pysite rollout undo deploy/pysite-nanjing       # 回滚上一版本
+kubectl -n pysite delete pod -l app=pysite-nanjing --wait=true  # 强制重建 Pod
+kubectl -n pysite get events --sort-by=.metadata.creationTimestamp | tail -30
 
-# 查看日志
-kubectl -n pysite logs deploy/pysite-nanjing --tail=50
+# ---------- 日志 ----------
+tail -f /www/wwwlogs/hangzhouzhiyu.net.error.log                     # nginx 反代错误（502 根因线索）
+tail -f /www/wwwroot/pysite/sites/hangzhou/storage/logs/site.log      # 应用访问日志
+tail -f /www/wwwroot/pysite/scripts/k3s-deploy.log                    # 部署日志
+tail -f /www/wwwroot/pysite/scripts/webhook.log                       # webhook / Drone 触发日志
 
-# 重启站点
-kubectl -n pysite rollout restart deploy/pysite-nanjing
+# ---------- 端口与健康 ----------
+ss -lntp | grep -E '810[1-5]'                              # 五站监听端口
+for p in 8101 8102 8103 8104 8105; do curl -s -o /dev/null -w "$p %{http_code}\n" http://127.0.0.1:$p/; done
+kubectl -n pysite get deploy pysite-hangzhou -o jsonpath='{.spec.template.spec.containers[0].resources}'
 
-# 回滚站点
-kubectl -n pysite rollout undo deploy/pysite-nanjing
+# ---------- 从外部探测 ----------
+# 本机若设置了 HTTP_PROXY，必须加 --noproxy '*'，否则代理自身故障会伪报 502
+curl --noproxy '*' -H 'Host: www.hangzhouzhiyu.net' http://<服务器IP>/
 ```
+
+### 502 故障排查实录（2026-11-26）
+
+**现象**：`https://www.hangzhouzhiyu.net/admin/` 返回 502，其余四站正常。
+
+**排查链路（由外到内）**：
+
+1. 外层响应头 `Server: cloudflare` + `error code: 502` → Cloudflare 回源失败，问题在源站。
+2. 源站 nginx 间歇 502，错误日志为 `connect() failed (111: Connection refused) while connecting to upstream` 与 `upstream prematurely closed connection`。
+3. 直连应用 `http://127.0.0.1:8105/` 稳定 200 → 应用本身能服务，怀疑 Pod 反复重启。
+4. `kubectl -n pysite get pod` 显示 `pysite-hangzhou` 重启 5 次，其他站 0 次。
+5. `kubectl describe pod` 显示 `Last State: Terminated / Reason: OOMKilled / Exit Code: 137`；`dmesg | grep -i oom` 确认容器 cgroup 内存耗尽（`anon-rss` 约 259Mi，限制 256Mi）。
+6. 触发场景：崩溃前 nginx 日志密集出现 `/uploads/image/...?x-oss-process=image/resize,m_fill,w_120,h_80/...webp`（后台文章列表缩略图）。杭州站最大原图 9.5MB / 6000px 级，Pillow 解码一张 RGB 约 72MB；uvicorn 把同步路由放进线程池并发处理十几张，峰值内存打爆 256Mi → 容器被杀 → 重启窗口内 nginx 502。
+
+**修复（不增加内存，五站资源配置保持一致）**：
+
+- `src/app/media/thumb.py`：JPEG 在解码阶段用 `im.draft()` 降采样（6000×4000 → 750×500，解码内存 72MB → 1.1MB）；缩略图处理改为**单 worker 线程池队列**串行执行，同一时刻内存里只有一张待处理图；命中磁盘缓存的请求不排队。
+- 五站 `memory limit` 均保持 256Mi，不为单站加内存。
+- 验证：6 并发请求下处理峰值并发为 1、全部成功；`pytest tests/ -q` 7 passed；部署后五站 HTTP 200、Pod 重启计数归零。
 
 ## 目录结构
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import quote
 
@@ -39,9 +40,10 @@ _MAX_EDGE = 4096
 _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
 # 缩略图处理是同步 CPU + 大内存操作（uvicorn 会把同步路由放进线程池并发执行）。
-# 大图解码一张可达数十 MB，不限制并发时后台列表一次加载十几张就会打爆容器内存。
-# 全局只允许 2 张同时处理；结果有磁盘缓存，后续请求零成本。
-_process_sem = threading.Semaphore(2)
+# 大图解码一张可达数十 MB，并发处理多张会打爆容器 256Mi 内存限制。
+# 用单 worker 队列串行处理：请求进队列后等待结果，同一时刻内存里只有一张待处理图。
+# 结果落磁盘缓存，命中缓存的请求不排队。
+_thumb_queue = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pysite-thumb")
 
 
 def with_process(url: str, process: str) -> str:
@@ -90,33 +92,49 @@ def cached_process(uploads: Path, cache_dir: Path, rel: str, process: str) -> tu
     token = _stamp(src)
     if _fresh(dest, stamp_path, token):
         return dest, media
-    with _process_sem:
-        lock = _lock_for(str(dest))
-        with lock:
-            token = _stamp(src)
-            if _fresh(dest, stamp_path, token):
-                return dest, media
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            tmp = dest.with_name(dest.name + ".tmp")
-            try:
-                _write(src, tmp, spec)
-            except Exception:
-                tmp.unlink(missing_ok=True)
-                if spec.get("format") == "webp":
-                    spec = dict(spec)
-                    spec["format"] = "jpg"
-                    dest, stamp_path, media = _cache_paths(cache_dir, rel, process, "jpg")
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    tmp = dest.with_name(dest.name + ".tmp")
-                    try:
-                        _write(src, tmp, spec)
-                    except Exception:
-                        tmp.unlink(missing_ok=True)
-                        return None
-                else:
+    # 未命中统一进单 worker 队列，排队等待处理结果；异常时返回 None（退化为原图）
+    try:
+        return _thumb_queue.submit(_process_uncached, uploads, cache_dir, rel, process).result()
+    except Exception:
+        return None
+
+
+def _process_uncached(uploads: Path, cache_dir: Path, rel: str, process: str) -> tuple[Path, str] | None:
+    """队列工作线程内执行：处理单张未缓存图片。"""
+    spec = _parse(process)
+    src = _under(uploads, rel)
+    if spec is None or src is None:
+        return None
+    dest, stamp_path, media = _cache_paths(cache_dir, rel, process, spec["format"])
+    token = _stamp(src)
+    if _fresh(dest, stamp_path, token):
+        return dest, media
+    lock = _lock_for(str(dest))
+    with lock:
+        token = _stamp(src)
+        if _fresh(dest, stamp_path, token):
+            return dest, media
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(dest.name + ".tmp")
+        try:
+            _write(src, tmp, spec)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            if spec.get("format") == "webp":
+                spec = dict(spec)
+                spec["format"] = "jpg"
+                dest, stamp_path, media = _cache_paths(cache_dir, rel, process, "jpg")
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                tmp = dest.with_name(dest.name + ".tmp")
+                try:
+                    _write(src, tmp, spec)
+                except Exception:
+                    tmp.unlink(missing_ok=True)
                     return None
-            tmp.replace(dest)
-            stamp_path.write_text(token, encoding="utf-8")
+            else:
+                return None
+        tmp.replace(dest)
+        stamp_path.write_text(token, encoding="utf-8")
     return (dest, media) if dest.is_file() else None
 
 
