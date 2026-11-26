@@ -35,6 +35,27 @@ OLD=$(git rev-parse HEAD)
 log "版本 $OLD -> $NEW"
 git reset --hard origin/main
 
+# 1.5 依赖自检自愈：venv/lib/python3.10/site-packages 是宿主机挂载给五站 Pod 的
+#     运行时依赖目录（不入 Git）。git 在跨越「删除 venv」的提交之间 reset 时会把
+#     曾被 Git 跟踪的部分包文件删掉，导致 Pod ImportError / CrashLoopBackOff。
+#     这里做导入自检：缺包或固定版本 dist-info 不在 → 清空后按 requirements.txt 重装。
+SP="$REPO/venv/lib/python3.10/site-packages"
+REQ="$REPO/requirements.txt"
+NEED_INSTALL=0
+python3 -c "
+import sys; sys.path.insert(0, '$SP')
+import fastapi, uvicorn, jinja2, sqlalchemy, PIL, pypinyin, pymysql, httpx, pydantic, starlette, greenlet, markupsafe, anyio, h11, click
+" 2>/dev/null || NEED_INSTALL=1
+FASTAPI_PIN=$(grep -oP '^fastapi==\K[0-9][^ ]*' "$REQ" 2>/dev/null || true)
+if [ -n "$FASTAPI_PIN" ] && [ ! -d "$SP/fastapi-$FASTAPI_PIN.dist-info" ]; then NEED_INSTALL=1; fi
+if [ "$NEED_INSTALL" = "1" ]; then
+  log "依赖缺失/版本不符，按 requirements.txt 重装 site-packages..."
+  rm -rf "$SP" && mkdir -p "$SP"
+  pip3 install --no-cache-dir --target="$SP" -r "$REQ" >>"$LOG" 2>&1 \
+    && log "依赖重装完成（$(ls "$SP" | wc -l) 项）" \
+    || { log "错误：依赖重装失败，中止部署"; exit 1; }
+fi
+
 # 2. 数据卷就绪检查（轻量：只确认五站数据库存在且非空，防止仓库/目录结构异常）
 for s in $SITES; do
   db="sites/$s/storage/site.db"
