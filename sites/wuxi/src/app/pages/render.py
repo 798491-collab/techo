@@ -199,7 +199,13 @@ def render(cfg: SiteConfig, template: str, context: dict) -> HTMLResponse:
 def cfg_root_env(cfg: SiteConfig, theme_key: str = "default") -> Environment:
     """复用已构建的 Environment（按 站点+主题 缓存，避免每请求重建）。"""
     cache_key = f"{cfg.key}:{theme_key}"
-    return _ENV.get(cache_key) or build_env(cfg, theme_key)
+    env = _ENV.get(cache_key)
+    if env is None:
+        # 修复：原实现只 get 不 set，且 register_env() 从未被调用，
+        # 导致每次整页缓存未命中都重建 Environment 并重新编译全部模板。
+        env = build_env(cfg, theme_key)
+        _ENV[cache_key] = env
+    return env
 
 
 _ENV: dict[str, Environment] = {}
