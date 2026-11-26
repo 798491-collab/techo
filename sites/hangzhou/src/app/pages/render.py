@@ -211,7 +211,9 @@ def register_env(cfg: SiteConfig, env: Environment) -> None:
 
 def _render_page(request: Request, template: str, slug: str = "", item_id: int = 0, keyword: str = "", kind: str = ""):
     cfg: SiteConfig = request.app.state.cfg
-    db = _db(request)
+    # 延迟创建 DB Session：首页/详情等缓存命中路径完全不需要它，零对象创建。
+    # category 分支需先查栏目确定模板，故单独提前创建。
+    db = _db(request) if kind == "category" else None
     try:
         cache = request.app.state.cache
         extra: dict = {}
@@ -248,7 +250,10 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
                                     headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
                 return HTMLResponse(raw_html)
 
-        # 栏目 slug 映射仅在需要渲染（缓存未命中）时绑定，缓存命中路径零 DB
+        # 缓存未命中才创建 DB Session（category 分支已在上方提前创建）
+        if db is None:
+            db = _db(request)
+        # 栏目 slug 映射仅在需要渲染（缓存未命中）时绑定
         _bind_category_slugs(db)
 
         # 需求：URL 带 get 参数 guest_book 时渲染「在线留言」表单填写页（ajax 提交）
@@ -383,7 +388,9 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
             cache.set_page(cache_key, html)
         return HTMLResponse(html)
     finally:
-        db.close()
+        # 缓存命中路径 db 为 None（延迟创建），无需关闭
+        if db is not None:
+            db.close()
 
 
 def _render_guestbook(request: Request, cfg: SiteConfig, db, cache) -> HTMLResponse:
