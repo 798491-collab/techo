@@ -29,13 +29,26 @@ trap 'rc=$?; if [ $rc -ne 0 ] && [ $rc -ne 1 ]; then log "部署脚本异常退�
 bash "$REPO/k8s/provision-secrets.sh" 2>&1 | while IFS= read -r l; do log "凭据: $l"; done
 
 # 1. 拉代码（storage/ 被 gitignore，git reset --hard 不会碰挂载的数据卷）
+#    与 Drone CI 校验步骤可能并发操作同一仓库（index.lock 冲突），失败带重试
 log "git pull..."
 git config --global --replace-all safe.directory "$REPO" >/dev/null 2>&1 || true
-git fetch origin main
+GIT_OK=0
+for i in 1 2 3; do
+  if git fetch origin main 2>/dev/null; then GIT_OK=1; break; fi
+  log "git fetch 第 $i 次失败，5 秒后重试..."
+  sleep 5
+done
+[ "$GIT_OK" = "1" ] || { log "错误：git fetch 三次均失败，中止部署"; exit 1; }
 NEW=$(git rev-parse origin/main)
 OLD=$(git rev-parse HEAD)
 log "版本 $OLD -> $NEW"
-git reset --hard origin/main
+RESET_OK=0
+for i in 1 2 3; do
+  if git reset --hard origin/main >/dev/null 2>&1; then RESET_OK=1; break; fi
+  log "git reset 第 $i 次失败（可能 CI 校验并发占用），5 秒后重试..."
+  sleep 5
+done
+[ "$RESET_OK" = "1" ] || { log "错误：git reset 三次均失败，中止部署"; exit 1; }
 
 # 1.5 依赖自检自愈：venv/lib/python3.10/site-packages 是宿主机挂载给五站 Pod 的
 #     运行时依赖目录（不入 Git）。git 在跨越「删除 venv」的提交之间 reset 时会把
