@@ -539,6 +539,11 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
                     if (_base / _name).is_file():
                         _favicon = f"/theme-assets/{_name}"
                         break
+            else:
+                # /uploads 下的位图走按需缩略图，浏览器拿小尺寸 webp，不再下载原图
+                from app.media.thumb import with_process as _wp
+                _favicon = _wp(_favicon,
+                               "image/auto-orient,1/resize,m_lfit,w_180,h_44/quality,q_80/format,webp")
             page = (page
                     .replace("__STATIC_VER__", str(app.state.static_version))
                     .replace("__SITE_NAME__", cfg.name)
