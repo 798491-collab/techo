@@ -107,31 +107,46 @@ for s in $SITES; do
 done
 log "数据卷就绪（5 站 site.db 存在且非空）"
 
-# 2.1 统一默认 favicon：仓库 logo.svg -> 各站 uploads/site-logo.svg（数据卷，git 不触碰）
-#     并把 setting.site_favicon 指向它；只在值不同时写库，避免无谓变更
+# 2.1 默认 favicon：以数据库 setting.site_favicon 为唯一真相源，部署绝不覆盖。
+#     仅当该 setting 不存在（全新库首次初始化）时，才用仓库 logo.svg 落一份默认
+#     文件并写入默认值；已有值（含后台上传/手改的自定义图标）一律原样保留。
 if [ -s "$REPO/logo.svg" ]; then
+  INITIALIZED=""
   for s in $SITES; do
-    mkdir -p "sites/$s/storage/uploads"
-    cp -f "$REPO/logo.svg" "sites/$s/storage/uploads/site-logo.svg"
-    chmod 644 "sites/$s/storage/uploads/site-logo.svg"
-    python3 - "$s" <<'PY' || true
-import sqlite3, sys
-site = sys.argv[1]
+    r=$(python3 - "$s" "$REPO/logo.svg" <<'PY' || true
+import os, shutil, sqlite3, sys
+site, logo = sys.argv[1], sys.argv[2]
 db = f"sites/{site}/storage/site.db"
-want = "/uploads/site-logo.svg"
 try:
     conn = sqlite3.connect(db, timeout=10)
     row = conn.execute("select value from setting where key='site_favicon'").fetchone()
-    if row is None:
-        conn.execute("insert into setting(key,value) values('site_favicon',?)", (want,))
-    elif row[0] != want:
-        conn.execute("update setting set value=? where key='site_favicon'", (want,))
-    conn.commit(); conn.close()
-except Exception:
-    pass
+    if row is not None:
+        print("KEEP")  # 数据库已有值：唯一真相源，不做任何改动
+    else:
+        target = f"sites/{site}/storage/uploads/site-logo.svg"
+        if not os.path.exists(target) and os.path.isfile(logo):
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            shutil.copyfile(logo, target)
+            os.chmod(target, 0o644)
+        conn.execute("insert into setting(key,value) values('site_favicon',?)",
+                     ("/uploads/site-logo.svg",))
+        conn.commit()
+        print("INIT")
+    conn.close()
+except Exception as e:
+    print("SKIP")  # 异常绝不阻断部署，保持现状
 PY
+)
+    case "$r" in
+      INIT) INITIALIZED="$INITIALIZED $s" ;;
+      SKIP) log "警告：$s favicon 检查异常（已跳过，数据库保持不变）" ;;
+    esac
   done
-  log "默认 favicon 已同步（仓库 logo.svg -> 五站 uploads/site-logo.svg）"
+  if [ -n "$INITIALIZED" ]; then
+    log "首次初始化默认 favicon:$INITIALIZED（数据库已有值的站点全部原样保留）"
+  else
+    log "favicon 沿用各站数据库设置（部署未覆盖）"
+  fi
 fi
 
 # 3. 应用 Service（ClusterIP 固定 IP，作为 nginx 反代入口）

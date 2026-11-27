@@ -464,8 +464,15 @@ def _align_permission_tree(db: Session) -> int:
     return changed
 
 
-def seed_site(db: Session, cfg, seed_file: Path, force: bool = False) -> dict:
-    """把站点专属 seed.json 幂等导入：按唯一键（slug / code / username）判重。"""
+def seed_site(db: Session, cfg, seed_file: Path, force: bool = False,
+              import_data: bool = True) -> dict:
+    """把站点专属 seed.json 导入。
+
+    - import_data=False 时只做「模型字段 / 角色 / 权限」的幂等迁移，绝不写入
+      管理员、配置、标签、栏目、内容、表单等站点数据——避免每次发版把已被
+      删除或改名的种子条目重新插回后台。
+    - 只有全新库首次初始化（或后台显式 force=True）才导入数据。
+    """
     if not seed_file.exists():
         return {"error": f"种子文件不存在: {seed_file}"}
     data = json.loads(seed_file.read_text(encoding="utf-8"))
@@ -473,29 +480,30 @@ def seed_site(db: Session, cfg, seed_file: Path, force: bool = False) -> dict:
     if sync_code_version(db):
         result["static_version"] = 1
 
-    # 管理员（幂等：存在则更新密码）
-    # 敏感信息零入库：seed.json 中密码为占位符时回退到 cfg.admin_password（环境变量/本地凭据文件）
-    username = data.get("admin", {}).get("username", cfg.admin_user)
-    _seed_pwd = str(data.get("admin", {}).get("password") or "")
-    password = cfg.admin_password if (not _seed_pwd or _seed_pwd.startswith("${")) else _seed_pwd
-    admin = db.scalar(select(AdminUser).where(AdminUser.username == username))
-    if admin is None:
-        db.add(AdminUser(username=username, password_hash=hash_password(password),
-                         nickname=data.get("admin", {}).get("nickname", "管理员"), role="super"))
-        result["admin"] = 1
-    elif force:
-        admin.password_hash = hash_password(password)
-        result["admin"] = 1
-
-    # 配置
-    for key, value in (data.get("settings") or {}).items():
-        row = db.scalar(select(Setting).where(Setting.key == key))
-        if row is None:
-            db.add(Setting(key=key, value=value if isinstance(value, str) else jdumps(value),
-                           group="basic"))
-            result["settings"] = result.get("settings", 0) + 1
+    if import_data:
+        # 管理员（幂等：存在则更新密码）
+        # 敏感信息零入库：seed.json 中密码为占位符时回退到 cfg.admin_password（环境变量/本地凭据文件）
+        username = data.get("admin", {}).get("username", cfg.admin_user)
+        _seed_pwd = str(data.get("admin", {}).get("password") or "")
+        password = cfg.admin_password if (not _seed_pwd or _seed_pwd.startswith("${")) else _seed_pwd
+        admin = db.scalar(select(AdminUser).where(AdminUser.username == username))
+        if admin is None:
+            db.add(AdminUser(username=username, password_hash=hash_password(password),
+                             nickname=data.get("admin", {}).get("nickname", "管理员"), role="super"))
+            result["admin"] = 1
         elif force:
-            row.value = value if isinstance(value, str) else jdumps(value)
+            admin.password_hash = hash_password(password)
+            result["admin"] = 1
+
+        # 配置
+        for key, value in (data.get("settings") or {}).items():
+            row = db.scalar(select(Setting).where(Setting.key == key))
+            if row is None:
+                db.add(Setting(key=key, value=value if isinstance(value, str) else jdumps(value),
+                               group="basic"))
+                result["settings"] = result.get("settings", 0) + 1
+            elif force:
+                row.value = value if isinstance(value, str) else jdumps(value)
 
     # 内容模型（内置：文章/产品/案例/banner，按 code 幂等）
     # 字段定义：系统字段（sys=1，全部模型一致，顺序固定）+ 各模型扩展字段
@@ -688,57 +696,58 @@ def seed_site(db: Session, cfg, seed_file: Path, force: bool = False) -> dict:
             row_ct.fields = jdumps(cur)
             result["content_type_fields"] = result.get("content_type_fields", 0) + 1
 
-    # 标签
-    for tag in data.get("tags") or []:
-        if not db.scalar(select(Tag).where(Tag.name == tag["name"])):
-            db.add(Tag(**_fill(Tag, tag)))
-            result["tags"] = result.get("tags", 0) + 1
+    if import_data:
+        # 标签
+        for tag in data.get("tags") or []:
+            if not db.scalar(select(Tag).where(Tag.name == tag["name"])):
+                db.add(Tag(**_fill(Tag, tag)))
+                result["tags"] = result.get("tags", 0) + 1
 
-    # 栏目（先建父级，再建子级）
-    cat_ids: dict[str, int] = {}
-    categories = data.get("categories") or []
-    for item in sorted(categories, key=lambda x: x.get("pid", 0)):
-        slug = item.get("slug", "")
-        existing = db.scalar(select(Category).where(Category.slug == slug)) if slug else None
-        if existing is None:
-            payload = _fill(Category, item)
-            parent_slug = item.pop("_parent", None)
-            if parent_slug and parent_slug in cat_ids:
-                payload["pid"] = cat_ids[parent_slug]
-            row = Category(**payload)
-            db.add(row)
-            db.flush()
-            cat_ids[slug] = row.id
-            result["categories"] = result.get("categories", 0) + 1
-        else:
-            cat_ids[slug] = existing.id
+        # 栏目（先建父级，再建子级）
+        cat_ids: dict[str, int] = {}
+        categories = data.get("categories") or []
+        for item in sorted(categories, key=lambda x: x.get("pid", 0)):
+            slug = item.get("slug", "")
+            existing = db.scalar(select(Category).where(Category.slug == slug)) if slug else None
+            if existing is None:
+                payload = _fill(Category, item)
+                parent_slug = item.pop("_parent", None)
+                if parent_slug and parent_slug in cat_ids:
+                    payload["pid"] = cat_ids[parent_slug]
+                row = Category(**payload)
+                db.add(row)
+                db.flush()
+                cat_ids[slug] = row.id
+                result["categories"] = result.get("categories", 0) + 1
+            else:
+                cat_ids[slug] = existing.id
 
-    # 内容
-    for item in data.get("contents") or []:
-        title = item.get("title", "")
-        existing = db.scalar(select(Content).where(Content.title == title)) if title else None
-        if existing is None:
-            payload = _fill(Content, item)
-            cat_slug = item.get("category_slug", "")   # 非模型字段，需从原始数据取
-            if cat_slug in cat_ids:
-                payload["category_id"] = cat_ids[cat_slug]
-            if payload.get("publish_at") == "now":
-                payload["publish_at"] = datetime.now()
-            if "tags" in payload and isinstance(payload["tags"], list):
-                payload["tags"] = ",".join(payload["tags"])
-            row = Content(**payload)
-            db.add(row)
-            result["contents"] = result.get("contents", 0) + 1
+        # 内容
+        for item in data.get("contents") or []:
+            title = item.get("title", "")
+            existing = db.scalar(select(Content).where(Content.title == title)) if title else None
+            if existing is None:
+                payload = _fill(Content, item)
+                cat_slug = item.get("category_slug", "")   # 非模型字段，需从原始数据取
+                if cat_slug in cat_ids:
+                    payload["category_id"] = cat_ids[cat_slug]
+                if payload.get("publish_at") == "now":
+                    payload["publish_at"] = datetime.now()
+                if "tags" in payload and isinstance(payload["tags"], list):
+                    payload["tags"] = ",".join(payload["tags"])
+                row = Content(**payload)
+                db.add(row)
+                result["contents"] = result.get("contents", 0) + 1
 
-    # 表单模型
-    for item in data.get("forms") or []:
-        code = item.get("code", "")
-        if not db.scalar(select(FormModel).where(FormModel.code == code)):
-            payload = _fill(FormModel, item)
-            if isinstance(payload.get("fields"), list):
-                payload["fields"] = jdumps(payload["fields"])
-            db.add(FormModel(**payload))
-            result["forms"] = result.get("forms", 0) + 1
+        # 表单模型
+        for item in data.get("forms") or []:
+            code = item.get("code", "")
+            if not db.scalar(select(FormModel).where(FormModel.code == code)):
+                payload = _fill(FormModel, item)
+                if isinstance(payload.get("fields"), list):
+                    payload["fields"] = jdumps(payload["fields"])
+                db.add(FormModel(**payload))
+                result["forms"] = result.get("forms", 0) + 1
 
     # 角色（幂等创建；rules 跟随新菜单 key 对齐更新）
     roles = [
@@ -757,6 +766,11 @@ def seed_site(db: Session, cfg, seed_file: Path, force: bool = False) -> dict:
 
     # 权限节点：按新菜单结构对齐（分组+菜单项），button 类保留并重新挂载
     result["permissions"] = result.get("permissions", 0) + _align_permission_tree(db)
+
+    # 初始化完成标记：后续发版据此跳过全部种子数据导入，以数据库内容为准。
+    if not db.scalar(select(Setting).where(Setting.key == "site_seeded")):
+        db.add(Setting(key="site_seeded", value="1", group="system"))
+        result["seeded_marker"] = 1
 
     db.commit()
     return result

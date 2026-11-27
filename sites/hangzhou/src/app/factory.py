@@ -481,7 +481,18 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
     if auto_seed:
         session = db.session()
         try:
-            seed_site(session, cfg, cfg.root / "storage" / "seed.json")
+            # 种子数据只在全新库首次初始化时导入；已有库以数据库为准，
+            # 每次发版仅做模型字段/角色/权限的幂等迁移，不重写任何内容。
+            seeded = session.scalar(select(Setting).where(Setting.key == "site_seeded"))
+            if seeded is None:
+                from sqlalchemy import func as _func
+                from app.core.database import AdminUser as _AdminUser
+                has_admin = session.scalar(select(_func.count()).select_from(_AdminUser)) or 0
+                import_data = (has_admin == 0)
+            else:
+                import_data = False
+            seed_site(session, cfg, cfg.root / "storage" / "seed.json",
+                      import_data=import_data)
         finally:
             session.close()
         # seed_site 可能因代码版本变化上调静态版本号，重新加载到 app.state
