@@ -33,6 +33,15 @@
 
 修复后全链路验证：push → CI → promote → 部署完成 → 五站健康检查全 200，release-history 正常记 OK。
 
+### 后续补丁（同日二次修复）
+6. **依赖每次部署都全量重装**：自检用 requirements.txt 原名 glob dist-info，但 pip 按 PEP 503
+   规范化目录名（`python-multipart` → `python_multipart-*.dist-info` 等 6 个带连字符的包全部
+   匹配不上）→ 每次误判缺失。修复：自检前对包名做 `[-_.]+ → _` 规范化再匹配。
+7. **健康检查单次 curl 误杀发版**：bf0bb1a5（纯 CHANGELOG 提交、代码与成功版本一致）因
+   hangzhou 健康检查撞上滚动更新后 endpoint 收敛瞬间被连接拒绝，单次判定即回滚；且
+   `curl || echo 000` 与 curl 自身 `-w` 输出拼接成 `HTTP=000000` 干扰诊断。修复：单次失败
+   重试（最多 3 次、间隔 5s），去掉重复 000 拼接。
+
 ---
 
 ## v2.5.0 — 2026-11-26（当前）

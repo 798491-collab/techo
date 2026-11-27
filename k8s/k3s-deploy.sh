@@ -61,7 +61,7 @@ SP="$REPO/venv/lib/python3.10/site-packages"
 REQ="$REPO/requirements.txt"
 NEED_INSTALL=0
 python3 - "$SP" "$REQ" <<'PY' || NEED_INSTALL=1
-import sys, pathlib
+import re, sys, pathlib
 sp, req = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 # 仅做 dist-info 全量核对（requirements.txt 里每个 pin 都必须有对应 dist-info）。
 # 不做任何真实 import：本检查可能运行在 webhook 接收器 Pod 的小内存 cgroup 里，
@@ -73,7 +73,11 @@ for line in req.read_text(encoding="utf-8").splitlines():
     if not line or line.startswith("#") or "==" not in line:
         continue
     name, ver = line.split("==", 1)
-    if not any(sp.glob(f"{name}-{ver}.dist-info")):
+    # pip 按 PEP 503 规范化 dist-info 目录名：连字符/点/下划线统一为下划线且小写
+    # （如 python-multipart -> python_multipart-0.0.32.dist-info）。必须同样规范化
+    # 后再匹配，否则带连字符的包每次都会误判缺失，导致每次部署都全量重装依赖。
+    norm = re.sub(r"[-_.]+", "_", name).lower()
+    if not any(sp.glob(f"{norm}-{ver}.dist-info")):
         missing.append(line)
 if missing:
     print("missing dist-info:", ", ".join(missing[:5]))
@@ -189,8 +193,16 @@ if [ "$FAILED" -eq 0 ]; then
     ip="10.43.100.$octet"
     port=$((8100 + octet - 100))
     octet=$((octet + 1))
-    # curl 连接被拒（滚动更新瞬间）不应中止脚本：失败记 000，由下方统一判失败并回滚
-    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$ip:$port/" 2>/dev/null || echo 000)
+    # 单次 curl 撞上滚动更新后 endpoint 收敛瞬间会连接拒绝（curl 失败时 -w 仍输出 000，
+    # 故不再用 `|| echo 000` 以免拼出 000000）。失败先重试：最多 3 次、间隔 5s，
+    # 仍非 200 才判失败并回滚，避免纯瞬时抖动误杀正常发版。
+    code=000
+    for t in 1 2 3; do
+      c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$ip:$port/" 2>/dev/null) || c=000
+      if [ "$c" = "200" ]; then code=200; break; fi
+      code="$c"
+      [ "$t" -lt 3 ] && sleep 5
+    done
     if [ "$code" != "200" ]; then
       log "健康校验失败 $s (ClusterIP $ip:$port) HTTP=$code"
       FAILED=1
