@@ -438,6 +438,7 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
             # 搜索页不走整页缓存，这里按关键词缓存结果集（内容变更时后台统一清缓存）
             extra["items"] = cache.remember(f"search:{keyword or ''}", do_search, 120)
             extra["keyword"] = keyword
+            extra["page_title"] = f"搜索 - {keyword or '站内搜索'}"
 
         ctx = base_context(request, db, cfg, extra)
         ctx["seo"] = _build_seo(ctx, template, kind, extra)
@@ -492,9 +493,8 @@ def _render_guestbook(request: Request, cfg: SiteConfig, db, cache) -> HTMLRespo
 
 def _build_seo(ctx: dict, template: str, kind: str, extra: dict) -> dict:
     """前台 SEO 三要素（2026-11-27 需求）：
-    首页：后台「SEO 配置」设置了就用配置，否则回落站点名称；
-    案例/新闻/产品详情：优先发布时填写的 SEO 字段，未设置时标题 = 内容标题 + 站点简称；
-    栏目页/单页：标题 = 栏目名称 + 站点名称（栏目 SEO 字段优先）。"""
+    所有页面标题统一拼接站点名称（站点简称优先，未配置时用站点全称）：
+    已设置 SEO 标题 → SEO 标题 + 站点名称；未设置 → 页面/内容名称 + 站点名称。"""
     settings = ctx.get("settings") or {}
     site_name = (settings.get("site_name") or (ctx.get("site") or {}).get("name") or "").strip()
     short_name = (settings.get("site_short_name") or "").strip()
@@ -502,24 +502,25 @@ def _build_seo(ctx: dict, template: str, kind: str, extra: dict) -> dict:
     site_desc = (settings.get("seo_description") or settings.get("site_description") or "").strip()
 
     def _suffix(name: str) -> str:
-        return f"{name}-{short_name or site_name}" if name else site_name
+        tail = short_name or site_name
+        return f"{name}-{tail}" if name else site_name
 
     if template == "index.html":
-        return {"title": (settings.get("seo_title") or "").strip() or site_name,
+        return {"title": _suffix((settings.get("seo_title") or "").strip()),
                 "keywords": site_kw, "description": site_desc}
     if template == "detail.html":
         item = extra.get("item") or {}
-        return {"title": (item.get("seo_title") or "").strip() or _suffix((item.get("title") or "").strip()),
+        return {"title": _suffix((item.get("seo_title") or item.get("title") or "").strip()),
                 "keywords": (item.get("seo_keywords") or "").strip() or site_kw,
                 "description": (item.get("seo_description") or "").strip() or site_desc}
     if kind == "category" or template in ("list.html", "page.html"):
-        # 单页面（page.html）：页面自身配置了 SEO 就用页面配置，否则页面名称 + 站点名称
+        # 单页面（page.html）：页面自身配置了 SEO 就用页面配置，再统一拼接站点名称
         page_item = extra.get("page_item") or {}
         src = page_item if (template == "page.html" and (page_item.get("title") or page_item.get("seo_title"))) else (extra.get("category") or {})
-        return {"title": (src.get("seo_title") or "").strip() or _suffix((src.get("title") or src.get("name") or "").strip()),
+        return {"title": _suffix((src.get("seo_title") or src.get("title") or src.get("name") or "").strip()),
                 "keywords": (src.get("seo_keywords") or "").strip() or site_kw,
                 "description": (src.get("seo_description") or "").strip() or site_desc}
-    return {"title": (extra.get("page_title") or "").strip() or site_name,
+    return {"title": _suffix((extra.get("page_title") or "").strip()),
             "keywords": site_kw, "description": site_desc}
 
 

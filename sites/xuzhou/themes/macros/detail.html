@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "common.html" as cm %}
-{% block seo %}{{ cm.seo(site, item.title, item.seo_keywords, item.seo_description or item.summary) }}{% endblock %}
+{% block seo %}{{ cm.seo(site, item.title, item.seo_keywords, item.seo_description or item.summary, full_title=seo.title) }}{% endblock %}
 {% block content %}
   {{ cm.breadcrumb(site, [{'name': category.name or '详情', 'url': cm.curl(category.slug, category.model)}, {'name': item.title}]) }}
   <section class="sec detail-sec">

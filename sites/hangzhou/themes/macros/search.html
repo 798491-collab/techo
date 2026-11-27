@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "common.html" as cm %}
-{% block seo %}{{ cm.seo(site, '搜索 - ' ~ (keyword or '站内搜索')) }}{% endblock %}
+{% block seo %}{{ cm.seo(site, '搜索 - ' ~ (keyword or '站内搜索'), full_title=seo.title) }}{% endblock %}
 {% block content %}
   {{ cm.breadcrumb(site, [{'name':'搜索'}]) }}
   <section class="sec inner-sec">

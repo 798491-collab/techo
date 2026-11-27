@@ -492,7 +492,7 @@
         <div class="row g-3">
           <div class="md:col-6"><label class="form-label">后台访问地址</label><input class="form-control" id="sec-admin-path" spellcheck="false" value="${esc(String(s.admin_path??'admin'))}"><div class="form-text fg-secondary">默认 admin；改为自定义值后入口变为 /自定义值（原 /admin 地址返回 404），最长 30 秒生效。忘记自定义地址需到服务器查 setting 表 admin_path。</div></div>
           <div class="md:col-6"><label class="form-label">IP 防护模式</label>
-            <select class="form-select" id="sec-ip-mode">
+            <select class="form-control" id="sec-ip-mode">
               <option value="blacklist" ${mode==='whitelist'?'':'selected'}>黑名单模式（默认）— 列表内 IP 拒绝，其余放行</option>
               <option value="whitelist" ${mode==='whitelist'?'selected':''}>白名单模式 — 仅列表内 IP 放行（列表为空时除本机外全部拒绝）</option>
             </select></div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "common.html" as cm %}
-{% block seo %}{{ cm.seo(site, site.name) }}{% endblock %}
+{% block seo %}{{ cm.seo(site, site.name, full_title=seo.title) }}{% endblock %}
 {% block content %}
   {% block hero %}{% endblock %}
   {# 服务/产品板块：栏目中 model=product 的项 #}

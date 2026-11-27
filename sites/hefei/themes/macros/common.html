@@ -1,7 +1,7 @@
 {# 公共 Jinja2 组件宏：五套主题按需 import，避免重复代码 #}
 
-{% macro seo(site, title='', keywords='', description='') %}
-  <title>{{ title or site.name }} - {{ site.short_name }}</title>
+{% macro seo(site, title='', keywords='', description='', full_title='') %}
+  <title>{{ full_title or ((title or site.name) ~ ' - ' ~ site.short_name) }}</title>
   <meta name="keywords" content="{{ keywords or site.keywords or site.name }}">
   <meta name="description" content="{{ description or site.description or site.tagline }}">
 {% endmacro %}

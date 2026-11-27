@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "common.html" as cm %}
-{% block seo %}{{ cm.seo(site, (category.name or '关于我们'), category.seo_keywords, category.seo_description) }}{% endblock %}
+{% block seo %}{{ cm.seo(site, (category.name or '关于我们'), category.seo_keywords, category.seo_description, full_title=seo.title) }}{% endblock %}
 {% block content %}
   {% block aboutHero %}{% endblock %}
   {{ cm.breadcrumb(site, [{'name': '关于我们'}]) }}
