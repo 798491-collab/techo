@@ -524,7 +524,31 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
         @app.get("/admin/index.html", include_in_schema=False)
         async def admin_index_page():
             page = (ADMIN_DIR / "index.html").read_text(encoding="utf-8")
-            page = page.replace("__STATIC_VER__", str(app.state.static_version)).replace("__SITE_NAME__", cfg.name)
+            # 后台 favicon 与前台/系统设置一致：优先数据库 site_favicon，未设置用前台默认图标
+            _favicon = ""
+            try:
+                from sqlalchemy import select as _select
+                from app.core.database import Setting as _Setting
+                _session = db.session()
+                try:
+                    _favicon = _session.scalar(
+                        _select(_Setting.value).where(_Setting.key == "site_favicon")
+                    ) or ""
+                finally:
+                    _session.close()
+            except Exception:
+                _favicon = ""
+            if not _favicon.strip():
+                _base = theme_static_dir(cfg, app.state.theme_name)
+                _favicon = "/theme-assets/img/favicon.svg"
+                for _name in ("img/favicon.svg", "img/favicon.ico", "favicon.ico"):
+                    if (_base / _name).is_file():
+                        _favicon = f"/theme-assets/{_name}"
+                        break
+            page = (page
+                    .replace("__STATIC_VER__", str(app.state.static_version))
+                    .replace("__SITE_NAME__", cfg.name)
+                    .replace("__FAVICON__", _favicon.strip()))
             return HTMLResponse(page)
 
         app.mount("/admin", StaticFiles(directory=str(ADMIN_DIR), html=True), name="admin")
