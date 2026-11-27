@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}{{ site.name }}{% endblock %}</title>
-<meta name="keywords" content="{{ site.keywords }}">
-<meta name="description" content="{{ site.description }}">
+<title>{% block title %}{{ seo.title or site.name }}{% endblock %}</title>
+<meta name="keywords" content="{{ seo.keywords or site.keywords }}">
+<meta name="description" content="{{ seo.description or site.description }}">
 <link rel="icon" href="{{ settings.get('site_favicon') or ('/theme-assets/img/favicon.svg?v='~static_ver) }}">
 <link rel="stylesheet" href="/theme-libs/bootstrap-icons/bootstrap-icons.min.css?v={{ static_ver }}">
 <link rel="stylesheet" href="/theme-assets/css/style.css?v={{ static_ver }}-19">

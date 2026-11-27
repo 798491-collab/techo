@@ -295,7 +295,7 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
         # oss2 让写死 200×200 的页面缓存失效，改由各主题按样式尺寸出图。
         qp = request.query_params
         use_page_cache = (not qp.get("guest_book")) and template != "search.html"
-        cache_key = "oss34:" + request.url.path + ("?" + urlencode(sorted(qp.multi_items())) if qp else "")
+        cache_key = "oss35:" + request.url.path + ("?" + urlencode(sorted(qp.multi_items())) if qp else "")
         if use_page_cache:
             hit = cache.get_page_payload(cache_key)
             if hit is not None:
@@ -440,6 +440,7 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
             extra["keyword"] = keyword
 
         ctx = base_context(request, db, cfg, extra)
+        ctx["seo"] = _build_seo(ctx, template, kind, extra)
         # 主题选择：后台主题管理切换（settings.theme_active），default 回落站点自带模板
         theme_key = str(ctx.get("settings", {}).get("theme_active") or "default")
         env = cfg_root_env(cfg, theme_key)
@@ -478,6 +479,7 @@ def _render_guestbook(request: Request, cfg: SiteConfig, db, cache) -> HTMLRespo
 
     form = cache.remember("guest_book", load, 300)
     ctx = base_context(request, db, cfg, {"gb_form": form, "page_title": form.get("name") or "在线留言"})
+    ctx["seo"] = _build_seo(ctx, "guestbook.html", "", {"page_title": form.get("name") or "在线留言"})
     theme_key = str(ctx.get("settings", {}).get("theme_active") or "default")
     env = cfg_root_env(cfg, theme_key)
     try:
@@ -486,6 +488,37 @@ def _render_guestbook(request: Request, cfg: SiteConfig, db, cache) -> HTMLRespo
         from fastapi.responses import Response
         return Response("主题缺少模板: guestbook.html", status_code=500)
     return HTMLResponse(tpl.render(**ctx))
+
+
+def _build_seo(ctx: dict, template: str, kind: str, extra: dict) -> dict:
+    """前台 SEO 三要素（2026-11-27 需求）：
+    首页：后台「SEO 配置」设置了就用配置，否则回落站点名称；
+    案例/新闻/产品详情：优先发布时填写的 SEO 字段，未设置时标题 = 内容标题 + 站点简称；
+    栏目页/单页：标题 = 栏目名称 + 站点名称（栏目 SEO 字段优先）。"""
+    settings = ctx.get("settings") or {}
+    site_name = (settings.get("site_name") or (ctx.get("site") or {}).get("name") or "").strip()
+    short_name = (settings.get("site_short_name") or "").strip()
+    site_kw = (settings.get("seo_keywords") or settings.get("site_keywords") or "").strip()
+    site_desc = (settings.get("seo_description") or settings.get("site_description") or "").strip()
+
+    def _suffix(name: str) -> str:
+        return f"{name}-{short_name or site_name}" if name else site_name
+
+    if template == "index.html":
+        return {"title": (settings.get("seo_title") or "").strip() or site_name,
+                "keywords": site_kw, "description": site_desc}
+    if template == "detail.html":
+        item = extra.get("item") or {}
+        return {"title": (item.get("seo_title") or "").strip() or _suffix((item.get("title") or "").strip()),
+                "keywords": (item.get("seo_keywords") or "").strip() or site_kw,
+                "description": (item.get("seo_description") or "").strip() or site_desc}
+    if kind == "category" or template in ("list.html", "page.html"):
+        cat = extra.get("category") or {}
+        return {"title": (cat.get("seo_title") or "").strip() or _suffix((cat.get("name") or "").strip()),
+                "keywords": (cat.get("seo_keywords") or "").strip() or site_kw,
+                "description": (cat.get("seo_description") or "").strip() or site_desc}
+    return {"title": (extra.get("page_title") or "").strip() or site_name,
+            "keywords": site_kw, "description": site_desc}
 
 
 def to_brief(c: Content) -> dict:
