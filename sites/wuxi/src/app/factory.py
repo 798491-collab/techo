@@ -31,7 +31,7 @@ from app.core.database import Database, OperationLog, Setting
 from app.core.oplog import OPLOG_IDS, client_ip
 from app.core.settings import ADMIN_DIR, THEMES_ROOT, Settings, load_settings
 from app.core.state import set_static_version, set_theme
-from app.content.service import publish_due, seed_site
+from app.content.service import CODE_VERSION, publish_due, seed_site
 
 
 class AdminOpLogMiddleware(BaseHTTPMiddleware):
@@ -327,21 +327,6 @@ def _load_memory(db: Database) -> tuple[str, str]:
         session.close()
 
 
-def _preserve_contact_template(db: Database, cfg: Settings, theme_name: str) -> None:
-    """已有「联系我们」栏目如果没填模板，并且主题里有 contact.html，就记下这个模板名。"""
-    from app.core.database import Category
-    from app.pages.render import template_exists
-
-    session = db.session()
-    try:
-        row = session.scalar(select(Category).where(Category.slug == "contact", Category.deleted_at.is_(None)))
-        if row and not (row.template or "").strip() and template_exists(cfg, theme_name, "contact.html"):
-            row.template = "contact.html"
-            session.commit()
-    finally:
-        session.close()
-
-
 def mount_package_routers(app: FastAPI) -> None:
     root = Path(__file__).resolve().parent
     modules = []
@@ -394,7 +379,7 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
     db = Database(cfg.db_file)
     db.init_schema()
     cache = FileCache(cfg.cache_path, default_ttl=300)
-    theme_name, static_version = _load_memory(db)
+    theme_name, _ = _load_memory(db)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -470,97 +455,19 @@ def create_app(cfg: Settings | None = None, auto_seed: bool = True) -> FastAPI:
     app.state.db = db
     app.state.cache = cache
     set_theme(app, theme_name)
-    set_static_version(app, static_version)
+    set_static_version(app, CODE_VERSION)
 
     if auto_seed:
+        # 线上数据完全以数据库为准：发版不写种子数据、模型字段、角色权限、
+        # 分类统一或任何清理逻辑；只有全新空库才初始化一次。
         session = db.session()
         try:
-            # 种子数据只在全新库首次初始化时导入；已有库以数据库为准，
-            # 每次发版仅做模型字段/角色/权限的幂等迁移，不重写任何内容。
             seeded = session.scalar(select(Setting).where(Setting.key == "site_seeded"))
-            if seeded is None:
-                from sqlalchemy import func as _func
-                from app.core.database import AdminUser as _AdminUser
-                has_admin = session.scalar(select(_func.count()).select_from(_AdminUser)) or 0
-                import_data = (has_admin == 0)
-            else:
-                import_data = False
-            seed_site(session, cfg, cfg.root / "storage" / "seed.json",
-                      import_data=import_data)
-        finally:
-            session.close()
-        # seed_site 可能因代码版本变化上调静态版本号，重新加载到 app.state
-        _, ver = _load_memory(db)
-        set_static_version(app, ver)
-        _preserve_contact_template(db, cfg, app.state.theme_name)
-        # 清理废弃字段：site_wechat（微信号文本框已移除，微信相关只保留 wechat_qrcode 上传位）
-        session = db.session()
-        try:
-            from sqlalchemy import delete as _delete
-            session.execute(_delete(Setting).where(Setting.key == "site_wechat"))
-            session.commit()
-        except Exception:
-            session.rollback()
-        finally:
-            session.close()
-        # 文章分类统一：一级「新闻资讯」，二级「公司新闻 / 行业新闻」
-        session = db.session()
-        try:
-            from sqlalchemy import select as _sel, update as _upd
-            from app.core.database import Category, Content
-            cats = session.scalars(_sel(Category).where(
-                Category.deleted_at.is_(None), Category.model == "article", Category.pid == 0)).all()
-            if cats:
-                parent = None
-                for nm in ["新闻资讯", "公司动态", "资讯中心", "新闻中心", "行业动态"]:
-                    parent = next((c for c in cats if c.name == nm), None)
-                    if parent:
-                        break
-                if parent is None:
-                    parent = cats[0]
-                if parent.name != "新闻资讯":
-                    parent.name = "新闻资讯"
-                # 其余一级文章分类全部挂到「新闻资讯」下成为二级
-                for c in cats:
-                    if c.id != parent.id and c.pid != parent.id:
-                        c.pid = parent.id
-                def _child(name):
-                    return session.scalar(_sel(Category).where(
-                        Category.deleted_at.is_(None), Category.pid == parent.id, Category.name == name))
-                comp = _child("公司新闻")
-                if not comp:
-                    comp = Category(name="公司新闻", slug="company-news", model="article", pid=parent.id,
-                                    is_nav=1, status=1, site_id=parent.site_id,
-                                    content_type_id=parent.content_type_id, sort=1)
-                    session.add(comp)
-                    session.flush()
-                if not _child("行业新闻"):
-                    session.add(Category(name="行业新闻", slug="industry-news", model="article", pid=parent.id,
-                                         is_nav=1, status=1, site_id=parent.site_id,
-                                         content_type_id=parent.content_type_id, sort=2))
-                    session.flush()
-                # 原直接挂在一级分类下的文章归入「公司新闻」
-                session.execute(_upd(Content).where(
-                    Content.category_id == parent.id, Content.deleted_at.is_(None)
-                ).values(category_id=comp.id))
-                # 子分类 slug 去重：与父级或其他分类冲突时改用标准 slug
-                _slug_by_name = {"行业新闻": "hangyexinwen", "公司新闻": "gongsixinwen"}
-                _taken = set(session.scalars(_sel(Category.slug).where(
-                    Category.deleted_at.is_(None), Category.slug != "")).all())
-                for _ch in session.scalars(_sel(Category).where(
-                        Category.deleted_at.is_(None), Category.pid == parent.id)).all():
-                    if _ch.slug and _ch.slug != parent.slug and sum(1 for s in _taken if s == _ch.slug) == 1:
-                        continue
-                    _std = _slug_by_name.get(_ch.name) or (_ch.name or "cat")
-                    _cand, _k = _std, 2
-                    while _cand in _taken:
-                        _cand = "%s-%d" % (_std, _k); _k += 1
-                    _taken.discard(_ch.slug)
-                    _ch.slug = _cand
-                    _taken.add(_cand)
-                session.commit()
-        except Exception:
-            session.rollback()
+            from sqlalchemy import func as _func
+            from app.core.database import AdminUser as _AdminUser
+            has_admin = session.scalar(select(_func.count()).select_from(_AdminUser)) or 0
+            if seeded is None and has_admin == 0:
+                seed_site(session, cfg, cfg.root / "storage" / "seed.json")
         finally:
             session.close()
 

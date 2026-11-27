@@ -466,12 +466,10 @@ def _align_permission_tree(db: Session) -> int:
 
 def seed_site(db: Session, cfg, seed_file: Path, force: bool = False,
               import_data: bool = True) -> dict:
-    """把站点专属 seed.json 导入。
+    """导入 seed.json：仅用于全新空库初始化，或后台显式「重新初始化示例数据」。
 
-    - import_data=False 时只做「模型字段 / 角色 / 权限」的幂等迁移，绝不写入
-      管理员、配置、标签、栏目、内容、表单等站点数据——避免每次发版把已被
-      删除或改名的种子条目重新插回后台。
-    - 只有全新库首次初始化（或后台显式 force=True）才导入数据。
+    已有库发版绝不会调用本函数——种子数据、模型字段、角色权限、分类统一等
+    任何数据库写入都不再自动执行，线上数据以数据库现状为准。
     """
     if not seed_file.exists():
         return {"error": f"种子文件不存在: {seed_file}"}
