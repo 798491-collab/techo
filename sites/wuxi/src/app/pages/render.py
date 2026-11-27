@@ -295,7 +295,7 @@ def _render_page(request: Request, template: str, slug: str = "", item_id: int =
         # oss2 让写死 200×200 的页面缓存失效，改由各主题按样式尺寸出图。
         qp = request.query_params
         use_page_cache = (not qp.get("guest_book")) and template != "search.html"
-        cache_key = "oss35:" + request.url.path + ("?" + urlencode(sorted(qp.multi_items())) if qp else "")
+        cache_key = "oss36:" + request.url.path + ("?" + urlencode(sorted(qp.multi_items())) if qp else "")
         if use_page_cache:
             hit = cache.get_page_payload(cache_key)
             if hit is not None:
@@ -513,10 +513,12 @@ def _build_seo(ctx: dict, template: str, kind: str, extra: dict) -> dict:
                 "keywords": (item.get("seo_keywords") or "").strip() or site_kw,
                 "description": (item.get("seo_description") or "").strip() or site_desc}
     if kind == "category" or template in ("list.html", "page.html"):
-        cat = extra.get("category") or {}
-        return {"title": (cat.get("seo_title") or "").strip() or _suffix((cat.get("name") or "").strip()),
-                "keywords": (cat.get("seo_keywords") or "").strip() or site_kw,
-                "description": (cat.get("seo_description") or "").strip() or site_desc}
+        # 单页面（page.html）：页面自身配置了 SEO 就用页面配置，否则页面名称 + 站点名称
+        page_item = extra.get("page_item") or {}
+        src = page_item if (template == "page.html" and (page_item.get("title") or page_item.get("seo_title"))) else (extra.get("category") or {})
+        return {"title": (src.get("seo_title") or "").strip() or _suffix((src.get("title") or src.get("name") or "").strip()),
+                "keywords": (src.get("seo_keywords") or "").strip() or site_kw,
+                "description": (src.get("seo_description") or "").strip() or site_desc}
     return {"title": (extra.get("page_title") or "").strip() or site_name,
             "keywords": site_kw, "description": site_desc}
 
