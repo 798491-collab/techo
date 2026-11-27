@@ -194,6 +194,11 @@ def base_context(request: Request, db: Session, cfg: SiteConfig, extra: dict | N
     stats = cache.remember("site_stats", _load_stats, ttl=300)
     settings["theme_active"] = str(getattr(request.app.state, "theme_name", None) or "default")
     settings["static_version"] = str(getattr(request.app.state, "static_version", None) or settings.get("static_version") or "1")
+    # 前台 favicon 与后台一致：/uploads 位图追加按需缩略参数（SVG/外链原样）
+    if settings.get("site_favicon"):
+        from app.media.thumb import with_process as _wp
+        settings["site_favicon"] = _wp(settings["site_favicon"],
+                                       "image/auto-orient,1/resize,m_lfit,w_180,h_44/quality,q_80/format,webp")
 
     ctx = {
         "request": request,
